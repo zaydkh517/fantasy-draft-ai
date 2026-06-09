@@ -100,3 +100,72 @@ def reset_draft():
     cursor.execute('DELETE FROM drafted_players')
     conn.commit()
     conn.close()
+
+def save_league_settings(settings):
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS league_settings (
+            id INTEGER PRIMARY KEY,
+            league_size INTEGER,
+            roster_size INTEGER,
+            qb_starters INTEGER,
+            rb_starters INTEGER,
+            wr_starters INTEGER,
+            te_starters INTEGER,
+            flex_starters INTEGER,
+            bench_slots INTEGER
+        )
+    ''')
+    
+    cursor.execute('DELETE FROM league_settings')
+    
+    cursor.execute('''
+        INSERT INTO league_settings 
+        (league_size, roster_size, qb_starters, rb_starters, wr_starters, te_starters, flex_starters, bench_slots)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (
+        settings["league_size"],
+        settings["roster_size"],
+        settings["qb_starters"],
+        settings["rb_starters"],
+        settings["wr_starters"],
+        settings["te_starters"],
+        settings["flex_starters"],
+        settings["bench_slots"]
+    ))
+    
+    conn.commit()
+    conn.close()
+
+def get_league_settings():
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+    
+    cursor.execute('SELECT * FROM league_settings LIMIT 1')
+    row = cursor.fetchone()
+    conn.close()
+    
+    if row is None:
+        return {
+            "league_size": 12,
+            "roster_size": 16,
+            "qb_starters": 1,
+            "rb_starters": 3,
+            "wr_starters": 3,
+            "te_starters": 1,
+            "flex_starters": 1,
+            "bench_slots": 7
+        }
+    
+    return {
+        "league_size": row[1],
+        "roster_size": row[2],
+        "qb_starters": row[3],
+        "rb_starters": row[4],
+        "wr_starters": row[5],
+        "te_starters": row[6],
+        "flex_starters": row[7],
+        "bench_slots": row[8]
+    }

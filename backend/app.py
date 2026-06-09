@@ -1,7 +1,7 @@
-from flask import Flask
+from flask import Flask, request, jsonify
 from flask_cors import CORS
 from data import get_all_players, get_fantasy_players, get_trending_players
-from database import init_db, save_players, get_players_from_db, mark_player_drafted, get_drafted_players, reset_draft
+from database import init_db, save_players, get_players_from_db, mark_player_drafted, get_drafted_players, reset_draft, save_league_settings, get_league_settings
 
 app = Flask(__name__)
 CORS(app)
@@ -39,6 +39,17 @@ def drafted():
 def reset():
     reset_draft()
     return {"message": "Draft reset successfully"}
+
+@app.route('/settings', methods=['POST'])
+def save_settings():
+    data = request.json
+    save_league_settings(data)
+    return {"message": "League settings saved"}
+
+@app.route('/settings', methods=['GET'])
+def get_settings():
+    settings = get_league_settings()
+    return settings
 
 if __name__ == '__main__':
     app.run(debug=True)

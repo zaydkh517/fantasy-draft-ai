@@ -1,7 +1,4 @@
 # Peak ages by position
-from turtle import position
-
-
 PEAK_AGE = {
     "QB": 29,
     "RB": 25,
@@ -38,6 +35,13 @@ ROUND_VALUE = {
     2: 8,
     3: 6,
     4: 4
+}
+
+position_to_key = {
+    "QB": "qb_starters",   # key: "QB", value: "qb_starters"
+    "RB": "rb_starters",   # key: "RB", value: "rb_starters"
+    "WR": "wr_starters",   # key: "WR", value: "wr_starters"
+    "TE": "te_starters"    # key: "TE", value: "te_starters"
 }
 
 def get_round_weights(round_number):
@@ -122,3 +126,57 @@ def calculate_sleeper_score(player, fantasy_players):
 
     return round(potential * (percentile) * injury_penalty, 2)
 
+def calculate_roster_needs(position, roster, league_settings):
+    count = 0
+    for player in roster:
+        if player.get("position") == position:
+            count += 1
+
+    settings_key = position_to_key.get(position,"")
+    required = league_settings.get(settings_key, 0)
+
+    flex_slots = league_settings.get("flex_starters", 1)
+    flex_bonus = FLEX_WEIGHTS.get(position, 0) * flex_slots * 0.1
+
+    if count==0:
+        return 1.5 + flex_bonus
+    elif count < required:
+        return 1.0 + ((required - count) * 0.4) + flex_bonus
+    else: 
+        return 0.5 + flex_bonus
+
+def rank_players(available_players, fantasy_players, roster, round_number, league_settings):
+    ranked = []
+    weights = get_round_weights(round_number)
+
+    for player in available_players:
+        position = player.get("position")
+        search_rank = player.get("search_rank", 9999999)
+
+        base_score = max(1.0,10 - (search_rank * 0.01))
+
+        potential = calculate_potential_score(player)
+        sleeper = calculate_sleeper_score(player, fantasy_players)
+        upside_score = (potential + sleeper)/2
+
+        need = calculate_roster_needs(position, roster, league_settings)
+        scarcity = POSITION_SCARCITY.get(position, 0.8)
+        need_score = need * scarcity * 10
+
+        overall_score = (
+            (base_score * weights["base"]) +
+            (upside_score * weights["upside"]) +
+            (need_score * weights["need"])
+        )
+
+        ranked.append({
+            **player,
+            "base_score": round(base_score, 2),
+            "potential_score": potential,
+            "sleeper_score": sleeper,
+            "need_score": round(need_score, 2),
+            "overall_score": round(overall_score, 2)
+        })
+
+    ranked.sort(key=lambda x: x["overall_score"], reverse=True)
+    return ranked

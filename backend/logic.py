@@ -16,10 +16,10 @@ POSITION_SCARCITY = {
 
 # Round-based scoring weights
 ROUND_WEIGHTS = {
-    "early":  {"base": 0.60, "upside": 0.30, "need": 0.10},  # rounds 1-3
-    "middle": {"base": 0.45, "upside": 0.25, "need": 0.30},  # rounds 4-8
-    "late":   {"base": 0.45, "upside": 0.35, "need": 0.20},  # rounds 9-12
-    "very_late": {"base": 0.45, "upside": 0.50, "need": 0.05}  # rounds 13+
+    "early":     {"base": 0.70, "upside": 0.20, "need": 0.10, "sleeper_mix": 0.05},  # rounds 1-3
+    "middle":    {"base": 0.45, "upside": 0.25, "need": 0.30, "sleeper_mix": 0.25},  # rounds 4-8
+    "late":      {"base": 0.45, "upside": 0.35, "need": 0.20, "sleeper_mix": 0.45},  # rounds 9-12
+    "very_late": {"base": 0.45, "upside": 0.50, "need": 0.05, "sleeper_mix": 0.60}   # rounds 13+
 }
 
 # FLEX position weights
@@ -97,6 +97,15 @@ def calculate_potential_score(player):
 
     return round(potential, 2)
 
+
+def calculate_base_score(search_rank, player_count, round_number):
+    if round_number <= 3:
+        # early rounds should favor top consensus ranks more strongly
+        return max(1.0, 10 - (search_rank - 1) * 0.25)
+
+    return max(1.0, 10 - ((search_rank - 1) / (player_count - 1)) * 9)
+
+
 def calculate_sleeper_score(player, fantasy_players):
 
     potential = calculate_potential_score(player)
@@ -113,7 +122,7 @@ def calculate_sleeper_score(player, fantasy_players):
         if p.get("position") == position:
             same_position_players.append(p)
 
-    same_position_players.sort(key=lambda x: x.get("search_rank", 9999999))
+    same_position_players.sort(key=lambda x: x.get("search_rank") or 9999999)
 
     position_ranks = [p.get("search_rank", 9999999) for p in same_position_players]
     rank_index = position_ranks.index(player_rank) if player_rank in position_ranks else len(position_ranks)
@@ -148,16 +157,18 @@ def calculate_roster_needs(position, roster, league_settings):
 def rank_players(available_players, fantasy_players, roster, round_number, league_settings):
     ranked = []
     weights = get_round_weights(round_number)
+    player_count = len(available_players)
 
     for player in available_players:
         position = player.get("position")
-        search_rank = player.get("search_rank", 9999999)
+        search_rank = player.get("search_rank") or 9999999
 
-        base_score = max(1.0,10 - (search_rank * 0.01))
+        base_score = calculate_base_score(search_rank, player_count, round_number)
 
         potential = calculate_potential_score(player)
         sleeper = calculate_sleeper_score(player, fantasy_players)
-        upside_score = (potential + sleeper)/2
+        sleeper_mix = weights["sleeper_mix"]
+        upside_score = (potential * (1 - sleeper_mix)) + (sleeper * sleeper_mix)
 
         need = calculate_roster_needs(position, roster, league_settings)
         scarcity = POSITION_SCARCITY.get(position, 0.8)

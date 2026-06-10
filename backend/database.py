@@ -27,6 +27,20 @@ def init_db():
             drafted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS league_settings (
+            id INTEGER PRIMARY KEY,
+            league_size INTEGER,
+            roster_size INTEGER,
+            qb_starters INTEGER,
+            rb_starters INTEGER,
+            wr_starters INTEGER,
+            te_starters INTEGER,
+            flex_starters INTEGER,
+            bench_slots INTEGER
+        )
+    ''')
     
     conn.commit()
     conn.close()

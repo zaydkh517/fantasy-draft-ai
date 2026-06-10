@@ -51,5 +51,23 @@ def get_settings():
     settings = get_league_settings()
     return settings
 
+@app.route('/recommend', methods=['POST'])
+def recommend():
+    from logic import rank_players
+    
+    data = request.json
+    roster = data.get('roster', [])
+    round_number = data.get('round_number', 1)
+    drafted_ids = data.get('drafted_ids', [])
+    
+    all_players = get_players_from_db()
+    league_settings = get_league_settings()
+    
+    available = [p for p in all_players if p["player_id"] not in drafted_ids]
+    
+    ranked = rank_players(available, all_players, roster, round_number, league_settings)
+    
+    return jsonify({"recommendations": ranked[:10]})
+
 if __name__ == '__main__':
     app.run(debug=True)

@@ -29,14 +29,6 @@ FLEX_WEIGHTS = {
     "TE": 0.30
 }
 
-# Draft round value mapping
-ROUND_VALUE = {
-    1: 10,
-    2: 8,
-    3: 6,
-    4: 4
-}
-
 position_to_key = {
     "QB": "qb_starters",   # key: "QB", value: "qb_starters"
     "RB": "rb_starters",   # key: "RB", value: "rb_starters"
@@ -53,34 +45,18 @@ def get_round_weights(round_number):
         return ROUND_WEIGHTS["late"]
     else:
         return ROUND_WEIGHTS["very_late"]
-    
-def calculate_draft_capital_score(player):
-    round_number = player.get("draft_round")
-    years_exp = player.get("years_exp") or 0
-    if round_number is None:
-        return 0.0
-     
-    round_score = ROUND_VALUE.get(round_number,2)
-
-    if(years_exp<=1):
-        return round_score
-    elif(years_exp==2):
-        return round_score * 0.5
-    else:
-        return 0.0
-
-    
+      
 def calculate_potential_score(player):
     age = player.get("age")
     position = player.get("position")
-    years_exp = player.get("years_exp") or 0
+    search_rank = player.get("search_rank") or 9999999
 
     if age is None or position is None:
         return 5.0
     
-    peak = PEAK_AGE.get(position,27)
+    peak = PEAK_AGE.get(position, 27)
 
-    if age<peak:
+    if age < peak:
         age_score = 10.0 - ((peak - age) * 0.5)
     elif age == peak:
         age_score = 10.0
@@ -88,22 +64,13 @@ def calculate_potential_score(player):
         age_score = 10 - ((age - peak) * 1.2)
     age_score = max(1.0, min(age_score, 10.0))
 
-    draft_capital = calculate_draft_capital_score(player)
+    consensus_score = max(1.0, 10 - (search_rank * 0.03))
 
-    if draft_capital > 0:
-        potential = (age_score * 0.7) + (draft_capital * 0.3)
-    else:
-        potential = age_score
-
-    return round(potential, 2)
+    return round((age_score * 0.3) + (consensus_score * 0.7), 2)
 
 
-def calculate_base_score(search_rank, player_count, round_number):
-    if round_number <= 3:
-        # early rounds should favor top consensus ranks more strongly
-        return max(1.0, 10 - (search_rank - 1) * 0.25)
-
-    return max(1.0, 10 - ((search_rank - 1) / (player_count - 1)) * 9)
+def calculate_base_score(search_rank, draftable_pool):
+    return max(1.0, 10 - ((search_rank - 1) / (draftable_pool - 1)) * 9)
 
 
 def calculate_sleeper_score(player, fantasy_players):
@@ -124,7 +91,7 @@ def calculate_sleeper_score(player, fantasy_players):
 
     same_position_players.sort(key=lambda x: x.get("search_rank") or 9999999)
 
-    position_ranks = [p.get("search_rank", 9999999) for p in same_position_players]
+    position_ranks = [p.get("search_rank") or 9999999 for p in same_position_players]
     rank_index = position_ranks.index(player_rank) if player_rank in position_ranks else len(position_ranks)
     percentile = rank_index / len(same_position_players)
 
@@ -133,7 +100,9 @@ def calculate_sleeper_score(player, fantasy_players):
     else:
         injury_penalty = 1.0
 
-    return round(potential * (percentile) * injury_penalty, 2)
+    #makes sleeper score more useful and helps filter out the very low ranked players
+    raw_score = potential * percentile * injury_penalty
+    return round(min(10,raw_score*10), 2)
 
 def calculate_roster_needs(position, roster, league_settings):
     count = 0
@@ -159,11 +128,15 @@ def rank_players(available_players, fantasy_players, roster, round_number, leagu
     weights = get_round_weights(round_number)
     player_count = len(available_players)
 
+    league_size = league_settings.get("league_size", 12)
+    roster_size = league_settings.get("roster_size", 16)
+    draftable_pool = min((league_size * roster_size) + 40, player_count)
+
     for player in available_players:
         position = player.get("position")
         search_rank = player.get("search_rank") or 9999999
 
-        base_score = calculate_base_score(search_rank, player_count, round_number)
+        base_score = calculate_base_score(search_rank, draftable_pool)
 
         potential = calculate_potential_score(player)
         sleeper = calculate_sleeper_score(player, fantasy_players)
@@ -179,6 +152,16 @@ def rank_players(available_players, fantasy_players, roster, round_number, leagu
             (upside_score * weights["upside"]) +
             (need_score * weights["need"])
         )
+
+        depth = player.get("depth_chart_order") or 2
+        if depth == 1:
+            depth_multiplier = 1.0
+        elif depth == 2:
+            depth_multiplier = 0.75
+        else:
+            depth_multiplier = 0.5
+
+        overall_score = overall_score * depth_multiplier
 
         ranked.append({
             **player,

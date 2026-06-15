@@ -5,6 +5,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from data import get_all_players, get_fantasy_players, get_trending_players
 from database import init_db, save_players, get_players_from_db, mark_player_drafted, get_drafted_players, reset_draft, save_league_settings, get_league_settings
+from ai import explain_pick
 
 app = Flask(__name__)
 CORS(app)
@@ -69,6 +70,9 @@ def recommend():
     available = [p for p in all_players if p["player_id"] not in drafted_ids]
     
     ranked = rank_players(available, all_players, roster, round_number, league_settings)
+
+    for player in ranked[:10]:
+        player["explanation"] = explain_pick(player, roster, round_number)
     
     return jsonify({"recommendations": ranked[:10]})
 

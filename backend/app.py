@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-load_dotenv()
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '.env'))
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from data import get_all_players, get_fantasy_players, get_trending_players

@@ -1,7 +1,8 @@
 import sqlite3
 import json
+import os
 
-DATABASE = "draft.db"
+DATABASE = DATABASE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "draft.db")
 
 def init_db():
     conn = sqlite3.connect(DATABASE)

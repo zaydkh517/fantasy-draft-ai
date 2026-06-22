@@ -1,7 +1,10 @@
+import DraftScreen from './DraftScreen';
 import { useState } from 'react';
 import './App.css';
+import InfoModal from './InfoModal';
 
 function App() {
+  const [showModal, setShowModal] = useState(!localStorage.getItem('seenModal'));
   const [leagueSize, setLeagueSize] = useState(12);
   const [qbStarters, setQbStarters] = useState(1);
   const [rbStarters, setRbStarters] = useState(2);
@@ -40,6 +43,10 @@ function App() {
 
   return (
     <div className="App">
+      <button onClick={() => setShowModal(true)}>ⓘ</button>
+      {showModal && <InfoModal onClose={() => {localStorage.setItem('seenModal', 'true');
+      setShowModal(false);
+      }} />}
       {screen === 'setup' ? (
         <div>
           <h1>Fantasy Draft Engine</h1>
@@ -80,10 +87,7 @@ function App() {
           </form>
         </div>
       ) : (
-        <div>
-          <h1>Draft Board</h1>
-          <p>Round 1 - Pick {draftPosition}</p>
-        </div>
+          <DraftScreen />
       )}
     </div>
   );

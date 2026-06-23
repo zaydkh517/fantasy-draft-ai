@@ -87,7 +87,17 @@ function App() {
           </form>
         </div>
       ) : (
-          <DraftScreen />
+          <DraftScreen 
+            leagueSize={leagueSize}
+            rosterSize={rosterSize}
+            draftPosition={draftPosition}
+            qbStarters={qbStarters}
+            rbStarters={rbStarters}
+            wrStarters={wrStarters}
+            teStarters={teStarters}
+            flexStarters={flexStarters}
+            benchSlots={benchSlots}
+          />
       )}
     </div>
   );

@@ -81,7 +81,14 @@ def recommend():
     
     available = [p for p in all_players if p["player_id"] not in drafted_ids]
     
-    ranked = rank_players(available, all_players, roster, round_number, league_settings)
+    raw_trending = get_trending_players()
+    max_count = max((t.get("count", 1) for t in raw_trending), default=1)
+    trending_scores = {
+        t["player_id"]: min(10.0, (t.get("count", 0) / max_count) * 10)
+        for t in raw_trending
+    }
+    
+    ranked = rank_players(available, all_players, roster, round_number, league_settings, trending_scores)
 
     for player in ranked[:10]:
         player["explanation"] = explain_pick(player, roster, round_number)

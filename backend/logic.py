@@ -145,12 +145,16 @@ def calculate_base_score(search_rank, draftable_pool):
     return max(1.0, 10 - ((search_rank - 1) / (draftable_pool - 1)) * 9)
 
 
-def calculate_sleeper_score(player, fantasy_players):
+def calculate_sleeper_score(player, fantasy_players, trending_scores = None):
+    if trending_scores is None:
+        trending_scores = {}
 
     potential = calculate_potential_score(player)
     position = player.get("position")
     player_rank = player.get("search_rank", 9999999)
     injury_status = player.get("injury_status")
+    player_id = player.get("player_id")
+
 
     if(player_rank == 9999999):
         return 0.0
@@ -173,8 +177,14 @@ def calculate_sleeper_score(player, fantasy_players):
         injury_penalty = 1.0
 
     #makes sleeper score more useful and helps filter out the very low ranked players
-    raw_score = potential * percentile * injury_penalty
-    return round(min(10,raw_score*10), 2)
+    base_sleeper = potential * percentile * injury_penalty
+    base_sleeper =  min(10,base_sleeper*10)
+
+    trend_score = trending_scores.get(player_id, 0.0)
+
+    return round((base_sleeper * 0.80) + (trend_score * 0.20), 2)
+
+
 
 def calculate_roster_needs(position, roster, league_settings):
     count = 0
@@ -195,7 +205,7 @@ def calculate_roster_needs(position, roster, league_settings):
     else: 
         return 0.5 + flex_bonus
 
-def rank_players(available_players, fantasy_players, roster, round_number, league_settings):
+def rank_players(available_players, fantasy_players, roster, round_number, league_settings, trending_scores=None):
     ranked = []
     weights = get_round_weights(round_number)
     player_count = len(available_players)
@@ -211,7 +221,7 @@ def rank_players(available_players, fantasy_players, roster, round_number, leagu
         base_score = calculate_base_score(search_rank, draftable_pool)
 
         potential = calculate_potential_score(player)
-        sleeper = calculate_sleeper_score(player, fantasy_players)
+        sleeper = calculate_sleeper_score(player, fantasy_players, trending_scores)
         sleeper_mix = weights["sleeper_mix"]
         upside_score = (potential * (1 - sleeper_mix)) + (sleeper * sleeper_mix)
 

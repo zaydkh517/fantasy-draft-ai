@@ -1,4 +1,3 @@
-# Peak ages by position
 PEAK_AGE = {
     "QB": 29,
     "RB": 25,
@@ -49,25 +48,98 @@ def get_round_weights(round_number):
 def calculate_potential_score(player):
     age = player.get("age")
     position = player.get("position")
-    search_rank = player.get("search_rank") or 9999999
+    years_exp = player.get("years_exp") or 0
+    depth = player.get("depth_chart_order") or 2
+    yards_2025 = player.get("yards_2025") or 0
+    yards_2024 = player.get("yards_2024") or 0
+    targets_2025 = player.get("targets_2025") or 0
+    targets_2024 = player.get("targets_2024") or 0
+    snaps_2025 = player.get("snaps_2025") or 0
+    snaps_2024 = player.get("snaps_2024") or 0
 
     if age is None or position is None:
         return 5.0
     
+    # Age score calculation
     peak = PEAK_AGE.get(position, 27)
-
     if age < peak:
         age_score = 10.0 - ((peak - age) * 0.5)
     elif age == peak:
         age_score = 10.0
     else:
-        age_score = 10 - ((age - peak) * 1.2)
+        age_score = 10 - ((age - peak) * 1.35)
     age_score = max(1.0, min(age_score, 10.0))
 
-    consensus_score = max(1.0, 10 - (search_rank * 0.03))
+    # Yards trend score
+    if yards_2024 > 0:
+        yards_change = (yards_2025 - yards_2024) / yards_2024
+        yards_trend = min(10.0, max(1.0, 5.5 + (yards_change * 10)))
+    elif yards_2025 > 0:
+        yards_trend = 6.0
+    else:
+        yards_trend = 5.0
 
-    return round((age_score * 0.3) + (consensus_score * 0.7), 2)
+    # Target trend score
+    if position == "QB":
+        targets_trend = 5.0
+    elif targets_2024 > 0:
+        targets_change = (targets_2025 - targets_2024) / targets_2024
+        targets_trend = min(10.0, max(1.0, 5.5 + (targets_change * 10)))
+    elif targets_2025 > 0:
+        targets_trend = 6.0
+    else:
+        targets_trend = 5.0
 
+    # Snap trend score
+    if snaps_2024 > 0:
+        snaps_change = (snaps_2025 - snaps_2024) / snaps_2024
+        snaps_trend = min(10.0, max(1.0, 5.5 + (snaps_change * 10)))
+    elif snaps_2025 > 0:
+        snaps_trend = 6.0
+    else:
+        snaps_trend = 5.0
+
+    # Experience score
+    if years_exp == 0:
+        exp_score = 7.0
+    elif years_exp <= 4:
+        exp_score = 9.0
+    elif years_exp <= 7:
+        exp_score = 7.0
+    elif years_exp <= 10:
+        exp_score = 5.0
+    else:
+        exp_score = 3.0
+
+    # Depth score
+    if depth == 1:
+        depth_score = 10.0
+    elif depth == 2:
+        depth_score = 7.0
+    elif depth == 3:
+        depth_score = 4.5
+    else:
+        depth_score = 2.0
+
+    if position == "QB":
+        return round(
+            (age_score * 0.25) +
+            (yards_trend * 0.45) +
+            (snaps_trend * 0.15) +
+            (exp_score * 0.10) +
+            (depth_score * 0.05),
+            2
+        )
+    
+    return round(
+        (age_score * 0.20) +
+        (yards_trend * 0.30) +
+        (targets_trend * 0.20) +
+        (snaps_trend * 0.15) +
+        (exp_score * 0.10) +
+        (depth_score * 0.05),
+        2
+    )
 
 def calculate_base_score(search_rank, draftable_pool):
     return max(1.0, 10 - ((search_rank - 1) / (draftable_pool - 1)) * 9)
@@ -152,16 +224,6 @@ def rank_players(available_players, fantasy_players, roster, round_number, leagu
             (upside_score * weights["upside"]) +
             (need_score * weights["need"])
         )
-
-        depth = player.get("depth_chart_order") or 2
-        if depth == 1:
-            depth_multiplier = 1.0
-        elif depth == 2:
-            depth_multiplier = 0.75
-        else:
-            depth_multiplier = 0.5
-
-        overall_score = overall_score * depth_multiplier
 
         ranked.append({
             **player,

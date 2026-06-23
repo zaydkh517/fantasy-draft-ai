@@ -87,7 +87,7 @@ def recommend():
         t["player_id"]: min(10.0, (t.get("count", 0) / max_count) * 10)
         for t in raw_trending
     }
-    
+
     ranked = rank_players(available, all_players, roster, round_number, league_settings, trending_scores)
 
     for player in ranked[:10]:
@@ -96,4 +96,5 @@ def recommend():
     return jsonify({"recommendations": ranked[:10]})
 
 if __name__ == '__main__':
-    app.run(debug=False, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    #app.run(debug=False, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    app.run(debug=False, host="0.0.0.0", port=5001)

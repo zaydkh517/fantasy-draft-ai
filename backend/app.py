@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 import os
 from dotenv import load_dotenv
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '.env'))
@@ -70,6 +71,7 @@ def get_settings():
 @app.route('/recommend', methods=['POST'])
 def recommend():
     from logic import rank_players
+    from concurrent.futures import ThreadPoolExecutor
     
     data = request.json
     roster = data.get('roster', [])
@@ -90,11 +92,15 @@ def recommend():
 
     ranked = rank_players(available, all_players, roster, round_number, league_settings, trending_scores)
 
-    for player in ranked[:10]:
+    def add_explanation(player):
         player["explanation"] = explain_pick(player, roster, round_number)
+        return player
+    
+
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        ranked[:10] = list(executor.map(add_explanation, ranked[:10]))
     
     return jsonify({"recommendations": ranked[:10]})
 
 if __name__ == '__main__':
-    #app.run(debug=False, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
-    app.run(debug=False, host="0.0.0.0", port=5001)
+    app.run(debug=False, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))

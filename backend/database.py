@@ -2,7 +2,7 @@ import sqlite3
 import json
 import os
 
-DATABASE = DATABASE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "draft.db")
+DATABASE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "draft.db")
 
 def init_db():
     conn = sqlite3.connect(DATABASE)
@@ -18,7 +18,13 @@ def init_db():
             years_exp INTEGER,
             injury_status TEXT,
             depth_chart_order INTEGER,
-            search_rank INTEGER
+            search_rank INTEGER,
+            yards_2025 INTEGER,
+            yards_2024 INTEGER,
+            targets_2025 INTEGER,
+            targets_2024 INTEGER,
+            snaps_2025 INTEGER,
+            snaps_2024 INTEGER
         )
     ''')
     
@@ -53,8 +59,9 @@ def save_players(players):
     for player in players:
         cursor.execute('''
             INSERT OR REPLACE INTO players 
-            (player_id, full_name, position, team, age, years_exp, injury_status, depth_chart_order, search_rank)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (player_id, full_name, position, team, age, years_exp, injury_status, depth_chart_order, search_rank,
+            yards_2025, yards_2024, targets_2025, targets_2024, snaps_2025, snaps_2024)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             player["player_id"],
             player["full_name"],
@@ -64,7 +71,13 @@ def save_players(players):
             player["years_exp"],
             player["injury_status"],
             player["depth_chart_order"],
-            player["search_rank"]
+            player["search_rank"],
+            player.get("yards_2025", 0),
+            player.get("yards_2024", 0),
+            player.get("targets_2025", 0),
+            player.get("targets_2024", 0),
+            player.get("snaps_2025", 0),
+            player.get("snaps_2024", 0)
         ))
     
     conn.commit()
@@ -89,7 +102,13 @@ def get_players_from_db():
             "years_exp": row[5],
             "injury_status": row[6],
             "depth_chart_order": row[7],
-            "search_rank": row[8]
+            "search_rank": row[8],
+            "yards_2025": row[9],
+            "yards_2024": row[10],
+            "targets_2025": row[11],
+            "targets_2024": row[12],
+            "snaps_2025": row[13],
+            "snaps_2024": row[14]
         })
     
     return players

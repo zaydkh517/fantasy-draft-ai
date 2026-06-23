@@ -56,7 +56,7 @@ def sync_players():
 @app.route('/players')
 def players():
     players = get_players_from_db()
-    return {"count": len(players), "sample": players[:5]}
+    return jsonify({"count": len(players), "players": players})
 
 @app.route('/draft', methods=['POST'])
 def draft_player():

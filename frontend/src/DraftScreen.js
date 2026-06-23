@@ -23,6 +23,7 @@ function DraftScreen({ leagueSize, rosterSize, draftPosition, qbStarters, rbStar
         drafted_ids: draftedIds
       })
     });
+    
     const data = await response.json();
     setRecommendations(data.recommendations);
     setLoading(false);

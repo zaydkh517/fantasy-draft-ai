@@ -68,6 +68,11 @@ def get_settings():
     settings = get_league_settings()
     return settings
 
+@app.route('/dbpath')
+def dbpath():
+    import database
+    return {"path": database.DATABASE}
+
 @app.route('/recommend', methods=['POST'])
 def recommend():
     from logic import rank_players

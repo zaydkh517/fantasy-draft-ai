@@ -7,11 +7,29 @@ from flask_cors import CORS
 from data import get_all_players, get_fantasy_players, get_trending_players, get_player_stats
 from database import init_db, save_players, get_players_from_db, mark_player_drafted, get_drafted_players, reset_draft, save_league_settings, get_league_settings
 from ai import explain_pick
+import threading
 
 app = Flask(__name__)
 CORS(app)
 
 init_db()
+
+def startup_sync():
+    from data import get_fantasy_players, get_player_stats
+    players = get_fantasy_players()
+    stats = get_player_stats()
+    for player in players:
+        player_id = player["player_id"]
+        player_stats = stats.get(player_id, {})
+        player["yards_2025"] = player_stats.get("yards_2025", 0)
+        player["yards_2024"] = player_stats.get("yards_2024", 0)
+        player["targets_2025"] = player_stats.get("targets_2025", 0)
+        player["targets_2024"] = player_stats.get("targets_2024", 0)
+        player["snaps_2025"] = player_stats.get("snaps_2025", 0)
+        player["snaps_2024"] = player_stats.get("snaps_2024", 0)
+    save_players(players)
+
+threading.Thread(target=startup_sync, daemon=True).start()
 
 @app.route('/')
 def home():
@@ -67,11 +85,6 @@ def save_settings():
 def get_settings():
     settings = get_league_settings()
     return settings
-
-@app.route('/dbpath')
-def dbpath():
-    import database
-    return {"path": database.DATABASE}
 
 @app.route('/recommend', methods=['POST'])
 def recommend():

@@ -10,10 +10,13 @@ function DraftScreen({ leagueSize, rosterSize, draftPosition, qbStarters, rbStar
   const [currentPick, setCurrentPick] = useState(1);
   const [allPlayers, setAllPlayers] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [draftBoard, setDraftBoard] = useState([]);
 
   const isMyTurn = () => {
     const pickInRound = ((currentPick - 1) % leagueSize) + 1;
-    return pickInRound === draftPosition;
+    const isEvenRound = currentRound % 2 === 0;
+    const effectivePosition = isEvenRound ? leagueSize - draftPosition + 1 : draftPosition;
+    return pickInRound === effectivePosition;
   };
 
   const fetchAllPlayers = async () => {
@@ -44,7 +47,8 @@ function DraftScreen({ leagueSize, rosterSize, draftPosition, qbStarters, rbStar
   };
 
   const handleDraft = async (player) => {
-    const newRoster = [...roster, { position: player.position, player_id: player.player_id, full_name: player.full_name }];
+    const slot = assignSlot(player, roster, { qbStarters, rbStarters, wrStarters, teStarters, flexStarters, benchSlots });
+    const newRoster = [...roster, { position: player.position, player_id: player.player_id, full_name: player.full_name, slot }];
     const newDraftedIds = [...draftedIds, player.player_id];
     const newRound = Math.floor(newDraftedIds.length / leagueSize) + 1;
 
@@ -52,6 +56,13 @@ function DraftScreen({ leagueSize, rosterSize, draftPosition, qbStarters, rbStar
     setDraftedIds(newDraftedIds);
     setCurrentRound(newRound);
     setCurrentPick(currentPick + 1);
+
+    setDraftBoard([...draftBoard, { 
+    pick: currentPick, 
+    player: player.full_name, 
+    position: player.position, 
+    team: 'You' 
+  }]);
 
     await fetch('https://fantasy-draft-ai-production.up.railway.app/draft', {
       method: 'POST',
@@ -68,7 +79,14 @@ function DraftScreen({ leagueSize, rosterSize, draftPosition, qbStarters, rbStar
 
     setDraftedIds(newDraftedIds);
     setCurrentRound(newRound);
-    setCurrentPick(currentPick + 1);
+    setCurrentPick(currentPick + 1)
+
+    setDraftBoard([...draftBoard, { 
+      pick: currentPick, 
+      player: player.full_name, 
+      position: player.position, 
+      team: 'Other' 
+    }]);  
 
     await fetch('https://fantasy-draft-ai-production.up.railway.app/draft', {
       method: 'POST',
@@ -78,8 +96,37 @@ function DraftScreen({ leagueSize, rosterSize, draftPosition, qbStarters, rbStar
     fetchRecommendations(roster, newDraftedIds, newRound);
   };
 
+  const assignSlot = (player, currentRoster, leagueSettings) => {
+    const { qbStarters, rbStarters, wrStarters, teStarters, flexStarters, benchSlots } = leagueSettings;
+
+    if (player.position === 'QB') {
+      const qbCount = currentRoster.filter(p => p.position === 'QB').length;
+      if (qbCount < qbStarters) return 'QB';
+      return 'BENCH';
+    } else if (player.position === 'RB') {
+      const rbCount = currentRoster.filter(p => p.position === 'RB').length;
+      if (rbCount < rbStarters) return 'RB';
+    } else if (player.position === 'WR') {
+      const wrCount = currentRoster.filter(p => p.position === 'WR').length;
+      if (wrCount < wrStarters) return 'WR';
+    } else if (player.position === 'TE') {
+      const teCount = currentRoster.filter(p => p.position === 'TE').length;
+      if (teCount < teStarters) return 'TE';
+    }
+    const flexCount = currentRoster.filter(p => p.slot === 'FLEX').length;
+    if (flexCount < flexStarters) return 'FLEX';
+
+    const benchCount = currentRoster.length - (qbStarters + rbStarters + wrStarters + teStarters + flexStarters);
+    if (benchCount < benchSlots) return 'BENCH';
+
+    return null; // No available slot
+}
+
   return (
     <div className="draft-screen">
+      <div className="draft-info">
+        <p>Round {currentRound} | Pick {currentPick} | {isMyTurn() ? "Your Pick" : "Waiting..."}</p>
+      </div>
       <div className="tabs">
         <button onClick={() => setActiveTab('recommendations')}>Recommendations</button>
         <button onClick={() => setActiveTab('roster')}>My Roster</button>
@@ -107,8 +154,51 @@ function DraftScreen({ leagueSize, rosterSize, draftPosition, qbStarters, rbStar
             )}
           </div>
         )}
-        {activeTab === 'roster' && <p>Roster goes here</p>}
-        {activeTab === 'board' && <p>Draft board goes here</p>}
+        {activeTab === 'roster' && (
+          <div>
+            <h2>My Roster</h2>
+            <h3>Starters</h3>
+            {Array.from({ length: qbStarters }, (_, i) => {
+              const player = roster.filter(p => p.slot === 'QB')[i];
+              return <p key={`QB${i}`}>QB: {player ? player.full_name : '—'}</p>;
+            })}
+            {Array.from({ length: rbStarters }, (_, i) => {
+              const player = roster.filter(p => p.slot === 'RB')[i];
+              return <p key={`RB${i}`}>RB: {player ? player.full_name : '—'}</p>;
+            })}
+            {Array.from({ length: wrStarters }, (_, i) => {
+              const player = roster.filter(p => p.slot === 'WR')[i];
+              return <p key={`WR${i}`}>WR: {player ? player.full_name : '—'}</p>;
+            })}
+            {Array.from({ length: teStarters }, (_, i) => {
+              const player = roster.filter(p => p.slot === 'TE')[i];
+              return <p key={`TE${i}`}>TE: {player ? player.full_name : '—'}</p>;
+            })}
+            {Array.from({ length: flexStarters }, (_, i) => {
+              const player = roster.filter(p => p.slot === 'FLEX')[i];
+              return <p key={`FLEX${i}`}>FLEX: {player ? player.full_name : '—'}</p>;
+            })}
+            <h3>Bench</h3>
+            {Array.from({ length: benchSlots }, (_, i) => {
+              const player = roster.filter(p => p.slot === 'BENCH')[i];
+              return <p key={`BENCH${i}`}>Bench: {player ? player.full_name : '—'}</p>;
+            })}
+          </div>
+        )}
+        {activeTab === 'board' && (
+          <div>
+            <h2>Draft Board</h2>
+            {draftBoard.length === 0 ? (
+              <p>No picks made yet.</p>
+            ) : (
+              draftBoard.map((entry, i) => (
+                <div key={i}>
+                  <p>Pick {entry.pick} | {entry.position} | {entry.player} | {entry.team}</p>
+                </div>
+              ))
+            )}
+          </div>
+        )}
         {activeTab === 'players' && (
           <div>
             <input

@@ -15,22 +15,20 @@ CORS(app)
 init_db()
 
 def startup_sync():
-    try:
-        from data import get_fantasy_players, get_player_stats
-        players = get_fantasy_players()
-        stats = get_player_stats()
-        for player in players:
-            player_id = player["player_id"]
-            player_stats = stats.get(player_id, {})
-            player["yards_2025"] = player_stats.get("yards_2025", 0)
-            player["yards_2024"] = player_stats.get("yards_2024", 0)
-            player["targets_2025"] = player_stats.get("targets_2025", 0)
-            player["targets_2024"] = player_stats.get("targets_2024", 0)
-            player["snaps_2025"] = player_stats.get("snaps_2025", 0)
-            player["snaps_2024"] = player_stats.get("snaps_2024", 0)
-        save_players(players)
-    except Exception as e:
-        print(f"Startup sync failed: {e}")
+    from data import get_fantasy_players, get_player_stats
+    players = get_fantasy_players()
+    stats = get_player_stats()
+    for player in players:
+        player_id = player["player_id"]
+        player_stats = stats.get(player_id, {})
+        player["yards_2025"] = player_stats.get("yards_2025", 0)
+        player["yards_2024"] = player_stats.get("yards_2024", 0)
+        player["targets_2025"] = player_stats.get("targets_2025", 0)
+        player["targets_2024"] = player_stats.get("targets_2024", 0)
+        player["snaps_2025"] = player_stats.get("snaps_2025", 0)
+        player["snaps_2024"] = player_stats.get("snaps_2024", 0)
+    save_players(players)
+
 
 threading.Thread(target=startup_sync, daemon=True).start()
 
@@ -102,8 +100,6 @@ def recommend():
     all_players = get_players_from_db()
     league_settings = get_league_settings()
     
-    print("drafted_ids received:", drafted_ids)
-    print("first player_id type:", type(all_players[0]["player_id"]) if all_players else "empty")
     available = [p for p in all_players if p["player_id"] not in drafted_ids]
     print("available count:", len(available))
 

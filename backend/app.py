@@ -99,6 +99,11 @@ def recommend():
     all_players = get_players_from_db()
     league_settings = get_league_settings()
     
+    print("drafted_ids received:", drafted_ids)
+    print("first player_id type:", type(all_players[0]["player_id"]) if all_players else "empty")
+    available = [p for p in all_players if p["player_id"] not in drafted_ids]
+    print("available count:", len(available))
+
     available = [p for p in all_players if p["player_id"] not in drafted_ids]
     
     raw_trending = get_trending_players()

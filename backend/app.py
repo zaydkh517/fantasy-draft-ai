@@ -114,13 +114,18 @@ def recommend():
 
     ranked = rank_players(available, all_players, roster, round_number, league_settings, trending_scores)
 
-    def add_explanation(player):
-        player["explanation"] = explain_pick(player, roster, round_number)
-        return player
-    
+    generate_explanations = data.get('generate_explanations', True)
 
-    with ThreadPoolExecutor(max_workers=10) as executor:
-        ranked[:10] = list(executor.map(add_explanation, ranked[:10]))
+    
+    if generate_explanations:
+        def add_explanation(player):
+            player["explanation"] = explain_pick(player, roster, round_number)
+            return player
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            ranked[:10] = list(executor.map(add_explanation, ranked[:10]))
+    else:
+        for player in ranked[:10]:
+            player["explanation"] = None
     
     return jsonify({"recommendations": ranked[:10]})
 

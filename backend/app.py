@@ -87,6 +87,31 @@ def get_settings():
     settings = get_league_settings()
     return settings
 
+@app.route('/rank-all', methods=['POST'])
+def rank_all():
+    from logic import rank_players
+    
+    data = request.json
+    roster = data.get('roster', [])
+    round_number = data.get('round_number', 1)
+    drafted_ids = data.get('drafted_ids', [])
+    
+    all_players = get_players_from_db()
+    league_settings = get_league_settings()
+    
+    available = [p for p in all_players if p["player_id"] not in drafted_ids]
+    
+    raw_trending = get_trending_players()
+    max_count = max((t.get("count", 1) for t in raw_trending), default=1)
+    trending_scores = {
+        t["player_id"]: min(10.0, (t.get("count", 0) / max_count) * 10)
+        for t in raw_trending
+    }
+    
+    ranked = rank_players(available, all_players, roster, round_number, league_settings, trending_scores)
+    
+    return jsonify({"players": ranked})
+
 @app.route('/recommend', methods=['POST'])
 def recommend():
     from logic import rank_players

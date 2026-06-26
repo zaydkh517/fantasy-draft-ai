@@ -20,11 +20,19 @@ function DraftScreen({ leagueSize, rosterSize, draftPosition, qbStarters, rbStar
     return pickInRound === effectivePosition;
   };
 
-  const fetchAllPlayers = async () => {
-    const response = await fetch('https://fantasy-draft-ai-production.up.railway.app/players');
-    const data = await response.json();
-    setAllPlayers(data.players || []);
-  };
+const fetchAllPlayers = async () => {
+  const response = await fetch('https://fantasy-draft-ai-production.up.railway.app/rank-all', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      roster: roster,
+      round_number: currentRound,
+      drafted_ids: draftedIds
+    })
+  });
+  const data = await response.json();
+  setAllPlayers(data.players || []);
+};
 
   useEffect(() => {
     fetchRecommendations();

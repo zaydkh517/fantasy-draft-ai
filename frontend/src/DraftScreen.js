@@ -11,6 +11,7 @@ function DraftScreen({ leagueSize, rosterSize, draftPosition, qbStarters, rbStar
   const [allPlayers, setAllPlayers] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [draftBoard, setDraftBoard] = useState([]);
+  const [positionFilter, setPositionFilter] = useState('ALL');
 
   const isMyTurn = (pick = currentPick) => {
     const pickInRound = ((pick - 1) % leagueSize) + 1;
@@ -219,12 +220,23 @@ const fetchAllPlayers = async () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
+            <select value={positionFilter} onChange={(e) => setPositionFilter(e.target.value)}>
+              <option value="ALL">All Positions</option>
+              <option value="QB">QB</option>
+              <option value="RB">RB</option>
+              <option value="WR">WR</option>
+              <option value="TE">TE</option>
+            </select>
             <div>
               {allPlayers
-                .filter(p => !draftedIds.includes(p.player_id) && p.full_name.toLowerCase().includes(searchQuery.toLowerCase()))
+                .filter(p => 
+                  !draftedIds.includes(p.player_id) && 
+                  p.full_name.toLowerCase().includes(searchQuery.toLowerCase()) &&
+                  (positionFilter === 'ALL' || p.position === positionFilter)
+                )
                 .map(player => (
                   <div key={player.player_id}>
-                    <span>{player.full_name} | {player.position} | {player.team}</span>
+                    <span>{player.full_name} | {player.position} | {player.team} | {player.overall_score}</span>
                     {isMyTurn() ? (
                       <button onClick={() => handleDraft(player)}>Draft</button>
                     ) : (

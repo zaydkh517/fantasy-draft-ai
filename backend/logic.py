@@ -121,6 +121,11 @@ def calculate_potential_score(player):
     else:
         depth_score = 2.0
 
+    depth_multiplier = 1.0 if depth == 1 else 0.7 if depth == 2 else 0.5
+    yards_trend = yards_trend * depth_multiplier
+    targets_trend = targets_trend * depth_multiplier
+    snaps_trend = snaps_trend * depth_multiplier
+
     if position == "QB":
         return round(
             (age_score * 0.25) +

@@ -16,7 +16,7 @@ def get_fantasy_players():
         position = player.get("position")
         status = player.get("status")
 
-        if position in FANTASY_POSITIONS and status == "Active":
+        if position in FANTASY_POSITIONS and status == "Active" and player.get("team"):
             fantasy_players.append({
                 "player_id": player_id,
                 "full_name": player.get("full_name"),

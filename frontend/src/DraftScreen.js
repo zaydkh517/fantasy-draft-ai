@@ -13,6 +13,7 @@ function DraftScreen({ leagueSize, rosterSize, draftPosition, qbStarters, rbStar
   const [draftBoard, setDraftBoard] = useState([]);
   const [positionFilter, setPositionFilter] = useState('ALL');
   const [teamRosters, setTeamRosters] = useState(Array.from({ length: leagueSize }, () => []));
+  const [draftComplete, setDraftComplete] = useState(false);
   
   //checks if it's users turn
   const isMyTurn = (pick = currentPick) => {
@@ -100,6 +101,11 @@ const fetchAllPlayers = async () => {
     setCurrentRound(newRound);
     setCurrentPick(currentPick + 1);
 
+    if (newDraftedIds.length >= leagueSize * rosterSize) {
+      setDraftComplete(true);
+      return;
+}
+
     setDraftBoard([...draftBoard, {
       pick: currentPick,
       player: player.full_name,
@@ -179,16 +185,61 @@ const handleAutoDraft = async () => {
     round = Math.floor((pick - 1) / leagueSize) + 1;
   }
 
+  if (draftedIdsCopy.length >= leagueSize * rosterSize) {
   setDraftedIds(draftedIdsCopy);
   setTeamRosters(teamRostersCopy);
   setDraftBoard(draftBoardCopy);
   setCurrentPick(pick);
   setCurrentRound(round);
+  setDraftComplete(true);
+  return;
+}
+
+  setDraftedIds(draftedIdsCopy);
+  setTeamRosters(teamRostersCopy);
+  setDraftBoard(draftBoardCopy);
+  setCurrentPick(pick);
+  setCurrentRound(round);
+  
 
   fetchRecommendations(roster, draftedIdsCopy, round, true);
 };
 
-  //return statement
+if (draftComplete) {
+    return (
+      <div className="draft-complete">
+        <h1>Draft Complete! 🏈</h1>
+        <p>Here's your final roster:</p>
+        <h2>My Roster</h2>
+        <h3>Starters</h3>
+        {Array.from({ length: qbStarters }, (_, i) => {
+          const player = roster.filter(p => p.slot === 'QB')[i];
+          return <p key={`QB${i}`} className="roster-slot">QB: {player ? player.full_name : '—'}</p>;
+        })}
+        {Array.from({ length: rbStarters }, (_, i) => {
+          const player = roster.filter(p => p.slot === 'RB')[i];
+          return <p key={`RB${i}`} className="roster-slot">RB: {player ? player.full_name : '—'}</p>;
+        })}
+        {Array.from({ length: wrStarters }, (_, i) => {
+          const player = roster.filter(p => p.slot === 'WR')[i];
+          return <p key={`WR${i}`} className="roster-slot">WR: {player ? player.full_name : '—'}</p>;
+        })}
+        {Array.from({ length: teStarters }, (_, i) => {
+          const player = roster.filter(p => p.slot === 'TE')[i];
+          return <p key={`TE${i}`} className="roster-slot">TE: {player ? player.full_name : '—'}</p>;
+        })}
+        {Array.from({ length: flexStarters }, (_, i) => {
+          const player = roster.filter(p => p.slot === 'FLEX')[i];
+          return <p key={`FLEX${i}`} className="roster-slot">FLEX: {player ? player.full_name : '—'}</p>;
+        })}
+        <h3>Bench</h3>
+        {Array.from({ length: benchSlots }, (_, i) => {
+          const player = roster.filter(p => p.slot === 'BENCH')[i];
+          return <p key={`BENCH${i}`} className="roster-slot">Bench: {player ? player.full_name : '—'}</p>;
+        })}
+      </div>
+    );
+  }
   return (
     <div className="draft-screen">
       <div className="draft-info">
@@ -209,9 +260,8 @@ const handleAutoDraft = async () => {
               recommendations.map(player => (
                 <div key={player.player_id}>
                   <h3>{player.full_name}</h3>
-                  <p>{player.position} | {player.team} | Age {player.age}</p>
-                  <p className="overall-score">Overall: {player.overall_score}</p>
-                  {isMyTurn() && <p>{player.explanation}</p>}
+                  <p className="player-meta">{player.position} | {player.team} | Age {player.age}</p>
+                  {isMyTurn() && <p className="explanation">{player.explanation}</p>}
                   {isMyTurn() ? (
                     <button onClick={() => handleDraft(player)}>Draft</button>
                   ) : (
@@ -290,7 +340,7 @@ const handleAutoDraft = async () => {
                   (positionFilter === 'ALL' || p.position === positionFilter)
                 )
                 .map(player => (
-                  <div key={player.player_id}>
+                  <div key={player.player_id} className="player-row">
                     <span>{player.full_name} | {player.position} | {player.team} | {player.overall_score}</span>
                     {isMyTurn() ? (
                       <button onClick={() => handleDraft(player)}>Draft</button>

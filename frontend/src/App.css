@@ -278,12 +278,17 @@ button[type="submit"]:active {
   color: #F0E6CC;
 }
 
+.tab-active {
+  color: #C9A84C !important;
+  border-bottom: 2px solid #C9A84C !important;
+}
+
 /* Tab content */
 .tab-content {
   padding: 8px 0;
 }
 
-/* Player cards - recommendations */
+/* Player cards */
 .tab-content > div > div {
   background: #1C2333;
   border: 1px solid #2D3748;
@@ -297,19 +302,58 @@ button[type="submit"]:active {
   border-color: #C9A84C;
 }
 
+/* Player name */
 .tab-content h3 {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 22px;
+  font-size: 24px;
   color: #F0E6CC;
-  letter-spacing: 1px;
-  margin-bottom: 6px;
+  letter-spacing: 2px;
+  margin-bottom: 4px;
 }
 
+/* Position / team / age */
+.player-meta {
+  color: #4A5568;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+/* Overall score */
+.overall-score {
+  color: #C9A84C;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+/* AI explanation */
+.explanation {
+  color: #8A9BB0;
+  font-size: 13px;
+  line-height: 1.7;
+  font-style: italic;
+  border-left: 2px solid #C9A84C;
+  padding-left: 12px;
+  margin: 10px 0;
+}
+
+/* Generic tab p */
 .tab-content p {
   color: #4A5568;
   font-size: 13px;
   margin-bottom: 6px;
   line-height: 1.6;
+}
+
+/* Draft board entry text */
+.tab-content > div > div p {
+  color: #F0E6CC;
+  font-size: 14px;
 }
 
 /* Draft and Log Pick buttons */
@@ -327,7 +371,6 @@ button[type="submit"]:active {
   transition: background 0.2s;
 }
 
-/* Draft button - gold */
 .tab-content button:first-of-type {
   background: #C9A84C;
   color: #0D1117;
@@ -337,7 +380,6 @@ button[type="submit"]:active {
   background: #E8C56A;
 }
 
-/* Log Pick button - outline */
 .tab-content button:only-child {
   background: transparent;
   border: 1px solid #2D3748;
@@ -349,13 +391,6 @@ button[type="submit"]:active {
   color: #F0E6CC;
 }
 
-/* Overall score */
-.overall-score {
-  color: #C9A84C;
-  font-size: 13px;
-  font-weight: 600;
-}
-
 /* Roster tab */
 .tab-content h2 {
   font-family: 'Bebas Neue', sans-serif;
@@ -365,10 +400,32 @@ button[type="submit"]:active {
   margin-bottom: 16px;
 }
 
-/* Draft board entries */
-.tab-content > div > div p {
+.roster-slot {
+  color: #F0E6CC !important;
+  font-size: 14px;
+}
+
+/* All Players row */
+.player-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  background: #1C2333;
+  border: 1px solid #2D3748;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  transition: border-color 0.2s;
+}
+
+.player-row:hover {
+  border-color: #C9A84C;
+}
+
+.player-row span {
   color: #F0E6CC;
   font-size: 14px;
+  font-weight: 500;
 }
 
 /* Search and filter */
@@ -414,12 +471,47 @@ select:focus {
   padding: 20px 0;
 }
 
-.roster-slot {
-  color: #F0E6CC !important;
-  font-size: 14px;
+/* Draft Complete Screen */
+.draft-complete {
+  background: #1C2333;
+  border: 1px solid #2D3748;
+  border-radius: 12px;
+  padding: 48px;
+  max-width: 600px;
+  margin: 40px auto;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.4);
 }
 
-.tab-active {
-  color: #C9A84C !important;
-  border-bottom: 2px solid #C9A84C !important;
+.draft-complete h1 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 56px;
+  color: #C9A84C;
+  letter-spacing: 3px;
+  margin-bottom: 8px;
+  text-shadow: 0 0 40px rgba(201, 168, 76, 0.3);
+}
+
+.draft-complete p:first-of-type {
+  color: #4A5568;
+  font-size: 14px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 32px;
+}
+
+.draft-complete h2 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 28px;
+  color: #C9A84C;
+  letter-spacing: 2px;
+  margin-bottom: 16px;
+}
+
+.draft-complete h3 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 18px;
+  color: #4A5568;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin: 20px 0 10px;
 }

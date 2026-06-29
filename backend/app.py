@@ -15,22 +15,41 @@ CORS(app)
 init_db()
 
 def startup_sync():
-    from data import get_fantasy_players, get_player_stats
-    players = get_fantasy_players()
-    stats = get_player_stats()
-    for player in players:
-        player_id = player["player_id"]
-        player_stats = stats.get(player_id, {})
-        player["yards_2025"] = player_stats.get("yards_2025", 0)
-        player["yards_2024"] = player_stats.get("yards_2024", 0)
-        player["targets_2025"] = player_stats.get("targets_2025", 0)
-        player["targets_2024"] = player_stats.get("targets_2024", 0)
-        player["snaps_2025"] = player_stats.get("snaps_2025", 0)
-        player["snaps_2024"] = player_stats.get("snaps_2024", 0)
-    save_players(players)
-
+    try:
+        from data import get_fantasy_players, get_player_stats
+        players = get_fantasy_players()
+        stats = get_player_stats()
+        for player in players:
+            player_id = player["player_id"]
+            player_stats = stats.get(player_id, {})
+            player["yards_2025"] = player_stats.get("yards_2025", 0)
+            player["yards_2024"] = player_stats.get("yards_2024", 0)
+            player["targets_2025"] = player_stats.get("targets_2025", 0)
+            player["targets_2024"] = player_stats.get("targets_2024", 0)
+            player["snaps_2025"] = player_stats.get("snaps_2025", 0)
+            player["snaps_2024"] = player_stats.get("snaps_2024", 0)
+        save_players(players)
+    except Exception as e:
+        print(f"Startup sync failed: {e}")
 
 threading.Thread(target=startup_sync, daemon=True).start()
+
+def get_ranked_players(roster, round_number, drafted_ids):
+    from logic import rank_players
+    
+    all_players = get_players_from_db()
+    league_settings = get_league_settings()
+    
+    available = [p for p in all_players if p["player_id"] not in drafted_ids]
+    
+    raw_trending = get_trending_players()
+    max_count = max((t.get("count", 1) for t in raw_trending), default=1)
+    trending_scores = {
+        t["player_id"]: min(10.0, (t.get("count", 0) / max_count) * 10)
+        for t in raw_trending
+    }
+    
+    return rank_players(available, all_players, roster, round_number, league_settings, trending_scores)
 
 @app.route('/')
 def home():
@@ -87,61 +106,16 @@ def get_settings():
     settings = get_league_settings()
     return settings
 
-@app.route('/rank-all', methods=['POST'])
-def rank_all():
-    from logic import rank_players
-    
-    data = request.json
-    roster = data.get('roster', [])
-    round_number = data.get('round_number', 1)
-    drafted_ids = data.get('drafted_ids', [])
-    
-    all_players = get_players_from_db()
-    league_settings = get_league_settings()
-    
-    available = [p for p in all_players if p["player_id"] not in drafted_ids]
-    
-    raw_trending = get_trending_players()
-    max_count = max((t.get("count", 1) for t in raw_trending), default=1)
-    trending_scores = {
-        t["player_id"]: min(10.0, (t.get("count", 0) / max_count) * 10)
-        for t in raw_trending
-    }
-    
-    ranked = rank_players(available, all_players, roster, round_number, league_settings, trending_scores)
-    
-    return jsonify({"players": ranked})
-
 @app.route('/recommend', methods=['POST'])
 def recommend():
-    from logic import rank_players
-    from concurrent.futures import ThreadPoolExecutor
-    
     data = request.json
     roster = data.get('roster', [])
     round_number = data.get('round_number', 1)
     drafted_ids = data.get('drafted_ids', [])
-    
-    all_players = get_players_from_db()
-    league_settings = get_league_settings()
-    
-    available = [p for p in all_players if p["player_id"] not in drafted_ids]
-    print("available count:", len(available))
-
-    available = [p for p in all_players if p["player_id"] not in drafted_ids]
-    
-    raw_trending = get_trending_players()
-    max_count = max((t.get("count", 1) for t in raw_trending), default=1)
-    trending_scores = {
-        t["player_id"]: min(10.0, (t.get("count", 0) / max_count) * 10)
-        for t in raw_trending
-    }
-
-    ranked = rank_players(available, all_players, roster, round_number, league_settings, trending_scores)
-
     generate_explanations = data.get('generate_explanations', True)
-
     
+    ranked = get_ranked_players(roster, round_number, drafted_ids)
+
     if generate_explanations:
         def add_explanation(player):
             player["explanation"] = explain_pick(player, roster, round_number)
@@ -153,6 +127,31 @@ def recommend():
             player["explanation"] = None
     
     return jsonify({"recommendations": ranked[:10]})
+
+@app.route('/rank-all', methods=['POST'])
+def rank_all():
+    data = request.json
+    roster = data.get('roster', [])
+    round_number = data.get('round_number', 1)
+    drafted_ids = data.get('drafted_ids', [])
+    
+    ranked = get_ranked_players(roster, round_number, drafted_ids)
+    
+    return jsonify({"players": ranked})
+
+@app.route('/autodraft', methods=['POST'])
+def autodraft():
+    data = request.json
+    roster = data.get('roster', [])
+    round_number = data.get('round_number', 1)
+    drafted_ids = data.get('drafted_ids', [])
+    
+    ranked = get_ranked_players(roster, round_number, drafted_ids)
+    
+    if not ranked:
+        return jsonify({"pick": None})
+    
+    return jsonify({"pick": ranked[0]})
 
 if __name__ == '__main__':
     app.run(debug=False, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))

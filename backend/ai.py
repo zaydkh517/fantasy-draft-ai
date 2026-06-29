@@ -30,7 +30,7 @@ Draft round: {round_number}
             "potential_score (0-10): " "based on the player's age relative to their position's peak age. " "Higher = more upside. "
             "sleeper_score (0-10): how undervalued this player is relative to their potential. " "Higher = more of a hidden gem. "
             "need_score (0-20): how much the user's current roster needs this position. " "Higher = bigger gap to fill. overall_score: the combined weighted score across all factors. "
-            "You will also receive the user's current roster positions. Use this to highlight how this player addresses a specific need. Write 2-3 natural, confident sentences explaining why this player is a good pick. Lead with the strongest factors driving their score. Sound like an experienced fantasy analyst, not a spreadsheet. Don't just list the numbers — use them to tell a story about the pick. Be concise and act as a manager."},
+            "You will also receive the user's current roster positions. Use this to highlight how this player addresses a specific need. Write 2-3 natural, confident sentences explaining why this player is a good pick. Lead with the strongest factors driving their score. Sound like an experienced fantasy analyst, not a spreadsheet. Don't list the numbers — use them to tell a story about the pick. Be concise in your explanation and act as a manager. Use natural language to explain the scores, but don't include the score itself, except for overall score. Do not be generic."},
             {"role": "user", "content": prompt}
         ],
         max_tokens=200,

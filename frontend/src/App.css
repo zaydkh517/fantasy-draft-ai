@@ -1,38 +1,425 @@
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background-color: #161B27;
+  color: #F0E6CC;
+  font-family: 'Inter', sans-serif;
+}
+
 .App {
-  text-align: center;
-}
-
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
   min-height: 100vh;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 20px;
   display: flex;
   flex-direction: column;
   align-items: center;
+}
+
+/* Info button */
+.App > button:first-child {
+  position: fixed;
+  top: 16px;
+  right: 20px;
+  background: transparent;
+  border: 1px solid #C9A84C;
+  color: #C9A84C;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+  font-size: 14px;
+  z-index: 100;
+}
+
+/* Setup Screen */
+.setup-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 480px;
+}
+
+.setup-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.setup-header h1 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 72px;
+  color: #C9A84C;
+  letter-spacing: 4px;
+  line-height: 1;
+  text-shadow: 0 0 40px rgba(201, 168, 76, 0.3);
+}
+
+.setup-header p {
+  color: #4A5568;
+  font-size: 14px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-top: 8px;
+}
+
+.setup-card {
+  background: #1C2333;
+  border: 1px solid #2D3748;
+  border-radius: 12px;
+  padding: 40px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #4A5568;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+
+input[type="number"] {
+  background: #0D1117;
+  border: 1px solid #2D3748;
+  color: #F0E6CC;
+  padding: 12px 14px;
+  border-radius: 6px;
+  font-size: 15px;
+  font-family: 'Inter', sans-serif;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+input[type="number"]:focus {
+  border-color: #C9A84C;
+}
+
+button[type="submit"] {
+  margin-top: 8px;
+  background: #C9A84C;
+  color: #0D1117;
+  border: none;
+  padding: 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  transition: background 0.2s, transform 0.1s;
+}
+
+button[type="submit"]:hover {
+  background: #E8C56A;
+  transform: translateY(-1px);
+}
+
+button[type="submit"]:active {
+  transform: translateY(0);
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
   justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+  z-index: 200;
+  backdrop-filter: blur(4px);
 }
 
-.App-link {
-  color: #61dafb;
+.modal-content {
+  background: #1C2333;
+  border: 1px solid #2D3748;
+  border-radius: 12px;
+  padding: 40px;
+  max-width: 560px;
+  width: 90%;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.modal-content h2 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 36px;
+  color: #C9A84C;
+  letter-spacing: 3px;
+}
+
+.modal-content h3 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px;
+  color: #C9A84C;
+  letter-spacing: 2px;
+  margin-bottom: -8px;
+}
+
+.modal-content p {
+  color: #F0E6CC;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.modal-content strong {
+  color: #C9A84C;
+}
+
+.modal-content button {
+  align-self: flex-end;
+  background: #C9A84C;
+  color: #0D1117;
+  border: none;
+  padding: 12px 28px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  transition: background 0.2s;
+}
+
+.modal-content button:hover {
+  background: #E8C56A;
+}
+
+/* Draft Screen */
+.draft-screen {
+  width: 100%;
+}
+
+/* Scoreboard bar */
+.draft-info {
+  background: #1C2333;
+  border: 1px solid #2D3748;
+  border-radius: 10px;
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px;
+  letter-spacing: 2px;
+  color: #C9A84C;
+}
+
+.draft-info button {
+  background: #C9A84C;
+  color: #0D1117;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  transition: background 0.2s;
+}
+
+.draft-info button:hover {
+  background: #E8C56A;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid #2D3748;
+  padding-bottom: 0;
+}
+
+.tabs button {
+  background: transparent;
+  border: none;
+  color: #4A5568;
+  padding: 12px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  border-bottom: 2px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
+  margin-bottom: -1px;
+}
+
+.tabs button:hover {
+  color: #F0E6CC;
+}
+
+/* Tab content */
+.tab-content {
+  padding: 8px 0;
+}
+
+/* Player cards - recommendations */
+.tab-content > div > div {
+  background: #1C2333;
+  border: 1px solid #2D3748;
+  border-radius: 10px;
+  padding: 20px 24px;
+  margin-bottom: 12px;
+  transition: border-color 0.2s;
+}
+
+.tab-content > div > div:hover {
+  border-color: #C9A84C;
+}
+
+.tab-content h3 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px;
+  color: #F0E6CC;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+}
+
+.tab-content p {
+  color: #4A5568;
+  font-size: 13px;
+  margin-bottom: 6px;
+  line-height: 1.6;
+}
+
+/* Draft and Log Pick buttons */
+.tab-content button {
+  margin-top: 12px;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  border: none;
+  transition: background 0.2s;
+}
+
+/* Draft button - gold */
+.tab-content button:first-of-type {
+  background: #C9A84C;
+  color: #0D1117;
+}
+
+.tab-content button:first-of-type:hover {
+  background: #E8C56A;
+}
+
+/* Log Pick button - outline */
+.tab-content button:only-child {
+  background: transparent;
+  border: 1px solid #2D3748;
+  color: #4A5568;
+}
+
+.tab-content button:only-child:hover {
+  border-color: #F0E6CC;
+  color: #F0E6CC;
+}
+
+/* Overall score */
+.overall-score {
+  color: #C9A84C;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Roster tab */
+.tab-content h2 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 28px;
+  color: #C9A84C;
+  letter-spacing: 2px;
+  margin-bottom: 16px;
+}
+
+/* Draft board entries */
+.tab-content > div > div p {
+  color: #F0E6CC;
+  font-size: 14px;
+}
+
+/* Search and filter */
+input[type="text"] {
+  background: #1C2333;
+  border: 1px solid #2D3748;
+  color: #F0E6CC;
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  outline: none;
+  width: 300px;
+  margin-bottom: 12px;
+  margin-right: 8px;
+}
+
+input[type="text"]:focus {
+  border-color: #C9A84C;
+}
+
+select {
+  background: #1C2333;
+  border: 1px solid #2D3748;
+  color: #F0E6CC;
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  outline: none;
+  cursor: pointer;
+  margin-bottom: 12px;
+}
+
+select:focus {
+  border-color: #C9A84C;
+}
+
+/* Loading */
+.tab-content > div > p {
+  color: #4A5568;
+  font-size: 14px;
+  padding: 20px 0;
+}
+
+.roster-slot {
+  color: #F0E6CC !important;
+  font-size: 14px;
+}
+
+.tab-active {
+  color: #C9A84C !important;
+  border-bottom: 2px solid #C9A84C !important;
 }

@@ -196,10 +196,10 @@ const handleAutoDraft = async () => {
         {!isMyTurn() && <button onClick={handleAutoDraft}>Auto Draft</button>}
       </div>
       <div className="tabs">
-        <button onClick={() => setActiveTab('recommendations')}>Recommendations</button>
-        <button onClick={() => setActiveTab('roster')}>My Roster</button>
-        <button onClick={() => setActiveTab('board')}>Draft Board</button>
-        <button onClick={() => { setActiveTab('players'); fetchAllPlayers(); }}>All Players</button>
+        <button className={activeTab === 'recommendations' ? 'tab-active' : ''} onClick={() => setActiveTab('recommendations')}>Recommendations</button>
+        <button className={activeTab === 'roster' ? 'tab-active' : ''} onClick={() => setActiveTab('roster')}>My Roster</button>
+        <button className={activeTab === 'board' ? 'tab-active' : ''} onClick={() => setActiveTab('board')}>Draft Board</button>
+        <button className={activeTab === 'players' ? 'tab-active' : ''} onClick={() => { setActiveTab('players'); fetchAllPlayers(); }}>All Players</button>
       </div>
 
       <div className="tab-content">
@@ -210,7 +210,7 @@ const handleAutoDraft = async () => {
                 <div key={player.player_id}>
                   <h3>{player.full_name}</h3>
                   <p>{player.position} | {player.team} | Age {player.age}</p>
-                  <p>Overall: {player.overall_score}</p>
+                  <p className="overall-score">Overall: {player.overall_score}</p>
                   {isMyTurn() && <p>{player.explanation}</p>}
                   {isMyTurn() ? (
                     <button onClick={() => handleDraft(player)}>Draft</button>
@@ -228,28 +228,28 @@ const handleAutoDraft = async () => {
             <h3>Starters</h3>
             {Array.from({ length: qbStarters }, (_, i) => {
               const player = roster.filter(p => p.slot === 'QB')[i];
-              return <p key={`QB${i}`}>QB: {player ? player.full_name : '—'}</p>;
+              return <p key={`QB${i}`} className="roster-slot">QB: {player ? player.full_name : '—'}</p>;
             })}
             {Array.from({ length: rbStarters }, (_, i) => {
               const player = roster.filter(p => p.slot === 'RB')[i];
-              return <p key={`RB${i}`}>RB: {player ? player.full_name : '—'}</p>;
+              return <p key={`RB${i}`} className="roster-slot">RB: {player ? player.full_name : '—'}</p>;
             })}
             {Array.from({ length: wrStarters }, (_, i) => {
               const player = roster.filter(p => p.slot === 'WR')[i];
-              return <p key={`WR${i}`}>WR: {player ? player.full_name : '—'}</p>;
+              return <p key={`WR${i}`}className="roster-slot">WR: {player ? player.full_name : '—'}</p>;
             })}
             {Array.from({ length: teStarters }, (_, i) => {
               const player = roster.filter(p => p.slot === 'TE')[i];
-              return <p key={`TE${i}`}>TE: {player ? player.full_name : '—'}</p>;
+              return <p key={`TE${i}`} className="roster-slot">TE: {player ? player.full_name : '—'}</p>;
             })}
             {Array.from({ length: flexStarters }, (_, i) => {
               const player = roster.filter(p => p.slot === 'FLEX')[i];
-              return <p key={`FLEX${i}`}>FLEX: {player ? player.full_name : '—'}</p>;
+              return <p key={`FLEX${i}`} className="roster-slot">FLEX: {player ? player.full_name : '—'}</p>;
             })}
             <h3>Bench</h3>
             {Array.from({ length: benchSlots }, (_, i) => {
               const player = roster.filter(p => p.slot === 'BENCH')[i];
-              return <p key={`BENCH${i}`}>Bench: {player ? player.full_name : '—'}</p>;
+              return <p key={`BENCH${i}`} className="roster-slot">Bench: {player ? player.full_name : '—'}</p>;
             })}
           </div>
         )}

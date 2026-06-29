@@ -12,7 +12,9 @@ function DraftScreen({ leagueSize, rosterSize, draftPosition, qbStarters, rbStar
   const [searchQuery, setSearchQuery] = useState('');
   const [draftBoard, setDraftBoard] = useState([]);
   const [positionFilter, setPositionFilter] = useState('ALL');
-
+  const [teamRosters, setTeamRosters] = useState(Array.from({ length: leagueSize }, () => []));
+  
+  //checks if it's users turn
   const isMyTurn = (pick = currentPick) => {
     const pickInRound = ((pick - 1) % leagueSize) + 1;
     const round = Math.floor((pick - 1) / leagueSize) + 1;
@@ -21,6 +23,7 @@ function DraftScreen({ leagueSize, rosterSize, draftPosition, qbStarters, rbStar
     return pickInRound === effectivePosition;
   };
 
+//gets all players
 const fetchAllPlayers = async () => {
   const response = await fetch('https://fantasy-draft-ai-production.up.railway.app/rank-all', {
     method: 'POST',
@@ -39,6 +42,7 @@ const fetchAllPlayers = async () => {
     fetchRecommendations();
   }, []);
 
+  //get recommendations
   const fetchRecommendations = async (currentRoster = roster, currentDraftedIds = draftedIds, round = currentRound, myTurn = isMyTurn()) => {
     setLoading(true);
     const response = await fetch('https://fantasy-draft-ai-production.up.railway.app/recommend', {
@@ -57,6 +61,34 @@ const fetchAllPlayers = async () => {
     setLoading(false);
   };
 
+  //assign player to roster spot
+  const assignSlot = (player, currentRoster, leagueSettings) => {
+    const { qbStarters, rbStarters, wrStarters, teStarters, flexStarters, benchSlots } = leagueSettings;
+
+    if (player.position === 'QB') {
+      const qbCount = currentRoster.filter(p => p.slot === 'QB').length;
+      if (qbCount < qbStarters) return 'QB';
+      return 'BENCH';
+    } else if (player.position === 'RB') {
+      const rbCount = currentRoster.filter(p => p.slot === 'RB').length;
+      if (rbCount < rbStarters) return 'RB';
+    } else if (player.position === 'WR') {
+      const wrCount = currentRoster.filter(p => p.slot === 'WR').length;
+      if (wrCount < wrStarters) return 'WR';
+    } else if (player.position === 'TE') {
+      const teCount = currentRoster.filter(p => p.slot === 'TE').length;
+      if (teCount < teStarters) return 'TE';
+    }
+    const flexCount = currentRoster.filter(p => p.slot === 'FLEX').length;
+    if (flexCount < flexStarters) return 'FLEX';
+
+    const benchCount = currentRoster.filter(p => p.slot === 'BENCH').length;
+    if (benchCount < benchSlots) return 'BENCH';
+
+    return null;
+  };
+
+  //draft a player
   const handleDraft = async (player) => {
     const slot = assignSlot(player, roster, { qbStarters, rbStarters, wrStarters, teStarters, flexStarters, benchSlots });
     const newRoster = [...roster, { position: player.position, player_id: player.player_id, full_name: player.full_name, slot }];
@@ -84,6 +116,7 @@ const fetchAllPlayers = async () => {
     fetchRecommendations(newRoster, newDraftedIds, newRound, isMyTurn(currentPick + 1));
   };
 
+  //log a pick
   const handleLogPick = async (player) => {
     const newDraftedIds = [...draftedIds, player.player_id];
     const newRound = Math.floor(newDraftedIds.length / leagueSize) + 1;
@@ -109,36 +142,58 @@ const fetchAllPlayers = async () => {
   fetchRecommendations(roster, newDraftedIds, newRound, isMyTurn(currentPick + 1));
   };
 
-  const assignSlot = (player, currentRoster, leagueSettings) => {
-    const { qbStarters, rbStarters, wrStarters, teStarters, flexStarters, benchSlots } = leagueSettings;
+const handleAutoDraft = async () => {
+  let pick = currentPick;
+  let draftedIdsCopy = [...draftedIds];
+  let teamRostersCopy = teamRosters.map(r => [...r]);
+  let draftBoardCopy = [...draftBoard];
+  let round = currentRound;
 
-    if (player.position === 'QB') {
-      const qbCount = currentRoster.filter(p => p.slot === 'QB').length;
-      if (qbCount < qbStarters) return 'QB';
-      return 'BENCH';
-    } else if (player.position === 'RB') {
-      const rbCount = currentRoster.filter(p => p.slot === 'RB').length;
-      if (rbCount < rbStarters) return 'RB';
-    } else if (player.position === 'WR') {
-      const wrCount = currentRoster.filter(p => p.slot === 'WR').length;
-      if (wrCount < wrStarters) return 'WR';
-    } else if (player.position === 'TE') {
-      const teCount = currentRoster.filter(p => p.slot === 'TE').length;
-      if (teCount < teStarters) return 'TE';
-    }
-    const flexCount = currentRoster.filter(p => p.slot === 'FLEX').length;
-    if (flexCount < flexStarters) return 'FLEX';
+  while (!isMyTurn(pick)) {
+    const pickInRound = ((pick - 1) % leagueSize);
+    const isEvenRound = Math.floor((pick - 1) / leagueSize) % 2 === 1;
+    const teamIndex = isEvenRound ? leagueSize - 1 - pickInRound : pickInRound;
 
-    const benchCount = currentRoster.filter(p => p.slot === 'BENCH').length;
-    if (benchCount < benchSlots) return 'BENCH';
+    const currentTeamRoster = teamRostersCopy[teamIndex];
 
-    return null;
-  };
+    const response = await fetch('https://fantasy-draft-ai-production.up.railway.app/autodraft', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        roster: currentTeamRoster,
+        round_number: round,
+        drafted_ids: draftedIdsCopy
+      })
+    });
 
+    const data = await response.json();
+    const pickedPlayer = data.pick;
+
+    if (!pickedPlayer) break;
+
+    draftedIdsCopy = [...draftedIdsCopy, pickedPlayer.player_id];
+    teamRostersCopy[teamIndex] = [...currentTeamRoster, { position: pickedPlayer.position, player_id: pickedPlayer.player_id, full_name: pickedPlayer.full_name }];
+    draftBoardCopy = [...draftBoardCopy, { pick, player: pickedPlayer.full_name, position: pickedPlayer.position, team: `Team ${teamIndex + 1}` }];
+
+    pick++;
+    round = Math.floor((pick - 1) / leagueSize) + 1;
+  }
+
+  setDraftedIds(draftedIdsCopy);
+  setTeamRosters(teamRostersCopy);
+  setDraftBoard(draftBoardCopy);
+  setCurrentPick(pick);
+  setCurrentRound(round);
+
+  fetchRecommendations(roster, draftedIdsCopy, round, true);
+};
+
+  //return statement
   return (
     <div className="draft-screen">
       <div className="draft-info">
         <p>Round {currentRound} | Pick {currentPick} | {isMyTurn() ? "Your Pick" : "Waiting..."}</p>
+        {!isMyTurn() && <button onClick={handleAutoDraft}>Auto Draft</button>}
       </div>
       <div className="tabs">
         <button onClick={() => setActiveTab('recommendations')}>Recommendations</button>

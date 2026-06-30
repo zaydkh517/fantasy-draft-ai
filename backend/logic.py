@@ -27,7 +27,7 @@ PEAK_AGE = {
 
 # Positional scarcity weights
 POSITION_SCARCITY = {
-    "QB": 0.8,
+    "QB": 0.7,
     "RB": 1.0,
     "WR": 1.0,
     "TE": 0.9

@@ -11,7 +11,7 @@
 ![SQLite](https://img.shields.io/badge/SQLite-07405E?style=for-the-badge&logo=sqlite&logoColor=white)
 ![OpenAI](https://img.shields.io/badge/OpenAI-412991?style=for-the-badge&logo=openai&logoColor=white)
 
-**[Live Demo](https://fantasy-draft-ai-assistant.vercel.app) · [GitHub](https://github.com/zaydkh517/fantasy-draft-ai)**
+**[App](fantasy-draft-ai-assistant.vercel.app)
 
 </div>
 

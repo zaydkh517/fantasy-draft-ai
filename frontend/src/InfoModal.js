@@ -3,7 +3,7 @@ function InfoModal({ onClose }) {
     <div className="modal-overlay">
       <div className="modal-content">
         <h2>About</h2>
-        <p>Hello! This is my Fantasy Football Draft Assistant, that uses custom logic and AI explanations to help you draft the best fantasy team.</p>
+        <p>Hello! This is my Fantasy Football Draft Assistant, that uses custom logic and AI explanations to help you draft the best fantasy team. When you are drafting a team, you can use this tool to track the draft, and input how the draft is going, so the Assistant can recommend the best choice for your team.</p>
 
         <h3>Scoring</h3>
         <p>The scoring is based on 4 categories that fit into one overall score:</p>
@@ -18,8 +18,8 @@ function InfoModal({ onClose }) {
         <h3>Upcoming Features</h3>
         <ul>
             <p><strong>Coming soon:</strong> Connecting to the Sleeper Fantasy App for automatic pick tracking</p>
-            <p><strong>Further along:</strong> Support for ESPN, Yahoo, and NFL Fantasy</p>
-            <p><strong>Always ongoing:</strong> Tweaking score metrics for the most accurate recommendations, improving UI</p>
+            <p><strong>Further along:</strong> Connecting to ESPN, Yahoo, and NFL Fantasy</p>
+            <p><strong>Always ongoing:</strong> Tweaking score metrics for the most accurate recommendations, improving UI, implementing suggestions from users</p>
         </ul>
         <button onClick={onClose}>Got It</button>
       </div>

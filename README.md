@@ -1,4 +1,3 @@
-[README.md](https://github.com/user-attachments/files/29522579/README.md)
 <div align="center">
 
 # 🏈 AI Fantasy Draft Engine

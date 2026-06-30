@@ -10,7 +10,7 @@
 ![SQLite](https://img.shields.io/badge/SQLite-07405E?style=for-the-badge&logo=sqlite&logoColor=white)
 ![OpenAI](https://img.shields.io/badge/OpenAI-412991?style=for-the-badge&logo=openai&logoColor=white)
 
-**[App](fantasy-draft-ai-assistant.vercel.app)**
+**[App](https://fantasy-draft-ai-assistant.vercel.app)**
 
 </div>
 

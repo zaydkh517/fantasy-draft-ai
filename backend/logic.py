@@ -36,7 +36,7 @@ POSITION_SCARCITY = {
 # Round-based scoring weights
 ROUND_WEIGHTS = {
     "early":     {"base": 0.70, "upside": 0.20, "need": 0.10, "sleeper_mix": 0.05},  # rounds 1-3
-    "middle":    {"base": 0.55, "upside": 0.25, "need": 0.20, "sleeper_mix": 0.25},  # rounds 4-8
+    "middle":    {"base": 0.55, "upside": 0.30, "need": 0.15, "sleeper_mix": 0.25},  # rounds 4-8
     "late":      {"base": 0.50, "upside": 0.35, "need": 0.15, "sleeper_mix": 0.45},  # rounds 9-12
     "very_late": {"base": 0.45, "upside": 0.50, "need": 0.05, "sleeper_mix": 0.60}   # rounds 13+
 }
@@ -240,7 +240,7 @@ def calculate_roster_needs(position, roster, league_settings):
     required = league_settings.get(settings_key, 0)
 
     flex_slots = league_settings.get("flex_starters", 1)
-    flex_bonus = FLEX_WEIGHTS.get(position, 0) * flex_slots * 0.1
+    flex_bonus = FLEX_WEIGHTS.get(position, 0) * flex_slots * 0.3
 
     if count==0:
         return 1.5 + flex_bonus

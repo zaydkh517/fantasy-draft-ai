@@ -41,6 +41,7 @@ const fetchAllPlayers = async () => {
 
   useEffect(() => {
     fetchRecommendations();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   //get recommendations

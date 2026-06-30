@@ -1,3 +1,23 @@
+POSITION_AVG_YARDS = {
+    "QB": 4000,
+    "RB": 1000,
+    "WR": 900,
+    "TE": 600
+}
+
+POSITION_AVG_TARGETS = {
+    "RB": 50,
+    "WR": 100,
+    "TE": 70
+}
+
+POSITION_AVG_SNAPS = {
+    "QB": 1000,
+    "RB": 400,
+    "WR": 600,
+    "TE": 500
+}
+
 PEAK_AGE = {
     "QB": 29,
     "RB": 25,
@@ -56,6 +76,7 @@ def calculate_potential_score(player):
     targets_2024 = player.get("targets_2024") or 0
     snaps_2025 = player.get("snaps_2025") or 0
     snaps_2024 = player.get("snaps_2024") or 0
+    search_rank = player.get("search_rank") or 9999999
 
     if age is None or position is None:
         return 5.0
@@ -71,31 +92,49 @@ def calculate_potential_score(player):
     age_score = max(1.0, min(age_score, 10.0))
 
     # Yards trend score
-    if yards_2024 > 0:
+    if yards_2024 > 0 and yards_2025 > 0:
         yards_change = (yards_2025 - yards_2024) / yards_2024
         yards_trend = min(10.0, max(1.0, 5.5 + (yards_change * 10)))
     elif yards_2025 > 0:
-        yards_trend = 6.0
+        position_avg_yards = POSITION_AVG_YARDS.get(position, 800)
+        yards_trend = min(10.0, max(1.0, (yards_2025 / position_avg_yards) * 7.0))
+    elif yards_2024 > 0:
+        position_avg_yards = POSITION_AVG_YARDS.get(position, 800)
+        yards_trend = min(10.0, max(1.0, (yards_2024 / position_avg_yards) * 7.0))
+    elif years_exp == 0:
+        yards_trend = max(5.0, min(8.0, 10 - (search_rank * 0.03)))
     else:
         yards_trend = 5.0
 
     # Target trend score
     if position == "QB":
         targets_trend = 5.0
-    elif targets_2024 > 0:
+    elif targets_2024 > 0 and targets_2025 > 0:
         targets_change = (targets_2025 - targets_2024) / targets_2024
         targets_trend = min(10.0, max(1.0, 5.5 + (targets_change * 10)))
     elif targets_2025 > 0:
-        targets_trend = 6.0
+        position_avg_targets = POSITION_AVG_TARGETS.get(position, 70)
+        targets_trend = min(10.0, max(1.0, (targets_2025 / position_avg_targets) * 7.0))
+    elif targets_2024 > 0:
+        position_avg_targets = POSITION_AVG_TARGETS.get(position, 70)
+        targets_trend = min(10.0, max(1.0, (targets_2024 / position_avg_targets) * 7.0))
+    elif years_exp == 0:
+        targets_trend = max(5.0, min(8.0, 10 - (search_rank * 0.03)))
     else:
         targets_trend = 5.0
 
     # Snap trend score
-    if snaps_2024 > 0:
+    if snaps_2024 > 0 and snaps_2025 > 0:
         snaps_change = (snaps_2025 - snaps_2024) / snaps_2024
         snaps_trend = min(10.0, max(1.0, 5.5 + (snaps_change * 10)))
     elif snaps_2025 > 0:
-        snaps_trend = 6.0
+        position_avg_snaps = POSITION_AVG_SNAPS.get(position, 500)
+        snaps_trend = min(10.0, max(1.0, (snaps_2025 / position_avg_snaps) * 7.0))
+    elif snaps_2024 > 0:
+        position_avg_snaps = POSITION_AVG_SNAPS.get(position, 500)
+        snaps_trend = min(10.0, max(1.0, (snaps_2024 / position_avg_snaps) * 7.0))
+    elif years_exp == 0:
+        snaps_trend = max(5.0, min(8.0, 10 - (search_rank * 0.03)))
     else:
         snaps_trend = 5.0
 

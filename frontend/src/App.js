@@ -18,7 +18,7 @@ function App() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const response = await fetch('https://fantasy-draft-ai-production.up.railway.app/settings', {
+    const response = await fetch('https://backend-ivory-reed-8288.fly.dev/settings', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

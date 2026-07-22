@@ -26,7 +26,7 @@ function DraftScreen({ leagueSize, rosterSize, draftPosition, qbStarters, rbStar
 
 //gets all players
 const fetchAllPlayers = async () => {
-  const response = await fetch('https://fantasy-draft-ai-production.up.railway.app/rank-all', {
+  const response = await fetch('https://backend-ivory-reed-8288.fly.dev/rank-all', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -47,7 +47,7 @@ const fetchAllPlayers = async () => {
   //get recommendations
   const fetchRecommendations = async (currentRoster = roster, currentDraftedIds = draftedIds, round = currentRound, myTurn = isMyTurn()) => {
     setLoading(true);
-    const response = await fetch('https://fantasy-draft-ai-production.up.railway.app/recommend', {
+    const response = await fetch('https://backend-ivory-reed-8288.fly.dev/recommend', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -114,7 +114,7 @@ const fetchAllPlayers = async () => {
       team: 'You'
     }]);
 
-    await fetch('https://fantasy-draft-ai-production.up.railway.app/draft', {
+    await fetch('https://backend-ivory-reed-8288.fly.dev/draft', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ player_id: player.player_id })
@@ -139,7 +139,7 @@ const fetchAllPlayers = async () => {
       team: 'Other'
     }]);
 
-    await fetch('https://fantasy-draft-ai-production.up.railway.app/draft', {
+    await fetch('https://backend-ivory-reed-8288.fly.dev/draft', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ player_id: player.player_id })
@@ -163,7 +163,7 @@ const handleAutoDraft = async () => {
 
     const currentTeamRoster = teamRostersCopy[teamIndex];
 
-    const response = await fetch('https://fantasy-draft-ai-production.up.railway.app/autodraft', {
+    const response = await fetch('https://backend-ivory-reed-8288.fly.dev/autodraft', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

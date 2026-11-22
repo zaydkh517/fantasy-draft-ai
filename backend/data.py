@@ -32,7 +32,7 @@ def get_fantasy_players():
     return fantasy_players
 
 def get_bulk_stats(season):
-    url = f"https://api.sleeper.app/v1/stats/nfl/{season}?season_type=regular&grouping=season"
+    url = f"https://api.sleeper.app/v1/stats/nfl/regular/{season}"
     response = requests.get(url)
     if response.status_code != 200:
         return {}

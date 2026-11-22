@@ -3,3 +3,9 @@
 venv/**/*.env
 venv/**/venv
 fly.toml
+
+# Secrets come from `fly secrets`; local env and virtualenv never go in the image
+.env
+venv/
+__pycache__/
+*.pyc

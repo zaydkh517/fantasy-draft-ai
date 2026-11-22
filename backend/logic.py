@@ -189,7 +189,24 @@ def calculate_base_score(search_rank, draftable_pool):
     return max(1.0, 10 - ((search_rank - 1) / (draftable_pool - 1)) * 9)
 
 
-def calculate_sleeper_score(player, fantasy_players, trending_scores = None):
+def build_position_index(fantasy_players):
+    """Precompute, per position, the first index of each search_rank in the
+    rank-sorted list. Lets sleeper scoring run in O(1) per player instead of
+    re-filtering and re-sorting the whole pool for every player."""
+    by_pos = {}
+    for p in fantasy_players:
+        by_pos.setdefault(p.get("position"), []).append(p.get("search_rank") or 9999999)
+    index = {}
+    for pos, ranks in by_pos.items():
+        ranks.sort()
+        first = {}
+        for i, r in enumerate(ranks):
+            first.setdefault(r, i)
+        index[pos] = (first, len(ranks))
+    return index
+
+
+def calculate_sleeper_score(player, fantasy_players, trending_scores = None, position_index = None):
     if trending_scores is None:
         trending_scores = {}
 
@@ -203,17 +220,11 @@ def calculate_sleeper_score(player, fantasy_players, trending_scores = None):
     if(player_rank == 9999999):
         return 0.0
     
-    same_position_players = []
-
-    for p in fantasy_players:
-        if p.get("position") == position:
-            same_position_players.append(p)
-
-    same_position_players.sort(key=lambda x: x.get("search_rank") or 9999999)
-
-    position_ranks = [p.get("search_rank") or 9999999 for p in same_position_players]
-    rank_index = position_ranks.index(player_rank) if player_rank in position_ranks else len(position_ranks)
-    percentile = rank_index / len(same_position_players)
+    if position_index is None:
+        position_index = build_position_index(fantasy_players)
+    first_index, pos_count = position_index.get(position, ({}, 0))
+    rank_index = first_index.get(player_rank, pos_count)
+    percentile = rank_index / pos_count if pos_count else 0.0
 
     if injury_status is not None:
         injury_penalty = 0.7
@@ -257,6 +268,7 @@ def rank_players(available_players, fantasy_players, roster, round_number, leagu
     league_size = league_settings.get("league_size", 12)
     roster_size = league_settings.get("roster_size", 16)
     draftable_pool = min((league_size * roster_size) + 40, player_count)
+    position_index = build_position_index(fantasy_players)
 
     for player in available_players:
         position = player.get("position")
@@ -265,7 +277,7 @@ def rank_players(available_players, fantasy_players, roster, round_number, leagu
         base_score = calculate_base_score(search_rank, draftable_pool)
 
         potential = calculate_potential_score(player)
-        sleeper = calculate_sleeper_score(player, fantasy_players, trending_scores)
+        sleeper = calculate_sleeper_score(player, fantasy_players, trending_scores, position_index)
         sleeper_mix = weights["sleeper_mix"]
         upside_score = (potential * (1 - sleeper_mix)) + (sleeper * sleeper_mix)
 

@@ -1,6 +1,12 @@
 import sqlite3
 import json
 import os
+import time
+import threading
+
+_players_cache = {"data": None, "at": 0.0}
+_players_lock = threading.Lock()
+PLAYERS_CACHE_TTL = 300  # seconds
 
 DATABASE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "draft.db")
 
@@ -82,8 +88,21 @@ def save_players(players):
     
     conn.commit()
     conn.close()
+    with _players_lock:
+        _players_cache["data"] = None
 
 def get_players_from_db():
+    """Cached read of the players table. Returns copies so callers can mutate."""
+    now = time.time()
+    with _players_lock:
+        cached = _players_cache["data"]
+        if cached is None or now - _players_cache["at"] > PLAYERS_CACHE_TTL:
+            cached = _load_players_from_db()
+            _players_cache["data"] = cached
+            _players_cache["at"] = now
+    return [dict(p) for p in cached]
+
+def _load_players_from_db():
     conn = sqlite3.connect(DATABASE)
     cursor = conn.cursor()
     

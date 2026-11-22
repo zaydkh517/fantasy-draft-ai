@@ -4,7 +4,8 @@ FANTASY_POSITIONS = ["QB", "RB", "WR", "TE"]
 
 def get_all_players():
     url = "https://api.sleeper.app/v1/players/nfl"
-    response = requests.get(url)
+    response = requests.get(url, timeout=30)
+    response.raise_for_status()
     players = response.json()
     return players
 
@@ -33,7 +34,7 @@ def get_fantasy_players():
 
 def get_bulk_stats(season):
     url = f"https://api.sleeper.app/v1/stats/nfl/regular/{season}"
-    response = requests.get(url)
+    response = requests.get(url, timeout=30)
     if response.status_code != 200:
         return {}
     return response.json()
@@ -72,6 +73,7 @@ def get_player_stats():
 
 def get_trending_players():
     url = "https://api.sleeper.app/v1/players/nfl/trending/add"
-    response = requests.get(url)
+    response = requests.get(url, timeout=10)
+    response.raise_for_status()
     trending = response.json()
     return trending

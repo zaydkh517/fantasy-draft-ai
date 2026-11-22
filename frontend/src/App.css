@@ -275,6 +275,18 @@ button:disabled { cursor: not-allowed; opacity: 0.4; }
   margin-bottom: 12px;
 }
 
+.notice-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-style: solid;
+  border-color: rgba(248, 113, 113, 0.35);
+  background: rgba(248, 113, 113, 0.08);
+  color: var(--text);
+}
+.is-stale { opacity: 0.55; transition: opacity 150ms; pointer-events: none; }
+
 /* ---------- Position chip ---------- */
 .pos {
   --c: var(--text-3);

@@ -1,2 +1,6 @@
 *.env
 venv/
+# Generated / local-only
+__pycache__/
+*.pyc
+backend/draft.db

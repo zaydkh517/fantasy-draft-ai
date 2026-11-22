@@ -1,4 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+
+export const API = 'https://backend-ivory-reed-8288.fly.dev';
+
+async function postJSON(path, body) {
+  const response = await fetch(`${API}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!response.ok) throw new Error(`${path} failed (${response.status})`);
+  return response.json();
+}
 
 function DraftScreen({ leagueSize, rosterSize, draftPosition, qbStarters, rbStarters, wrStarters, teStarters, flexStarters, benchSlots, onShowInfo }) {
   const [activeTab, setActiveTab] = useState('recommendations');
@@ -9,35 +21,66 @@ function DraftScreen({ leagueSize, rosterSize, draftPosition, qbStarters, rbStar
   const [loading, setLoading] = useState(false);
   const [currentPick, setCurrentPick] = useState(1);
   const [allPlayers, setAllPlayers] = useState([]);
+  const [playersLoading, setPlayersLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [draftBoard, setDraftBoard] = useState([]);
   const [positionFilter, setPositionFilter] = useState('ALL');
   const [teamRosters, setTeamRosters] = useState(Array.from({ length: leagueSize }, () => []));
   const [draftComplete, setDraftComplete] = useState(false);
-  
-  //checks if it's users turn
-  const isMyTurn = (pick = currentPick) => {
-    const pickInRound = ((pick - 1) % leagueSize) + 1;
-    const round = Math.floor((pick - 1) / leagueSize) + 1;
-    const isEvenRound = round % 2 === 0;
-    const effectivePosition = isEvenRound ? leagueSize - draftPosition + 1 : draftPosition;
-    return pickInRound === effectivePosition;
+  const [simulating, setSimulating] = useState(false);
+  const [error, setError] = useState(null); // { kind: 'recs' | 'players' | 'sim', message }
+
+  // Only the latest request of each kind may update state (responses can arrive out of order)
+  const recRequest = useRef(0);
+  const playersRequest = useRef(0);
+
+  const totalPicks = leagueSize * rosterSize;
+
+  // Sent with every request so the backend never relies on shared server-side settings
+  const leagueSettings = {
+    league_size: leagueSize,
+    roster_size: rosterSize,
+    qb_starters: qbStarters,
+    rb_starters: rbStarters,
+    wr_starters: wrStarters,
+    te_starters: teStarters,
+    flex_starters: flexStarters,
+    bench_slots: benchSlots
   };
 
-//gets all players
-const fetchAllPlayers = async () => {
-  const response = await fetch('https://backend-ivory-reed-8288.fly.dev/rank-all', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      roster: roster,
-      round_number: currentRound,
-      drafted_ids: draftedIds
-    })
-  });
-  const data = await response.json();
-  setAllPlayers(data.players || []);
-};
+  // 0-based index of the team picking at a given overall pick (snake order)
+  const teamIndexForPick = (pick) => {
+    const pickInRound = (pick - 1) % leagueSize;
+    const isEvenRound = Math.floor((pick - 1) / leagueSize) % 2 === 1;
+    return isEvenRound ? leagueSize - 1 - pickInRound : pickInRound;
+  };
+
+  //checks if it's users turn
+  const isMyTurn = (pick = currentPick) => pick <= totalPicks && teamIndexForPick(pick) === draftPosition - 1;
+
+  const roundAfter = (draftedCount) => Math.floor(draftedCount / leagueSize) + 1;
+
+  //gets all players
+  const fetchAllPlayers = async (currentRoster = roster, currentDraftedIds = draftedIds, round = currentRound) => {
+    const id = ++playersRequest.current;
+    setPlayersLoading(true);
+    try {
+      const data = await postJSON('/rank-all', {
+        roster: currentRoster,
+        round_number: round,
+        drafted_ids: currentDraftedIds,
+        league_settings: leagueSettings
+      });
+      if (id !== playersRequest.current) return;
+      setAllPlayers(data.players || []);
+      setError(e => (e?.kind === 'players' ? null : e));
+    } catch {
+      if (id !== playersRequest.current) return;
+      setError({ kind: 'players', message: "Couldn't load the player list." });
+    } finally {
+      if (id === playersRequest.current) setPlayersLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchRecommendations();
@@ -46,26 +89,30 @@ const fetchAllPlayers = async () => {
 
   //get recommendations
   const fetchRecommendations = async (currentRoster = roster, currentDraftedIds = draftedIds, round = currentRound, myTurn = isMyTurn()) => {
+    const id = ++recRequest.current;
     setLoading(true);
-    const response = await fetch('https://backend-ivory-reed-8288.fly.dev/recommend', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    try {
+      const data = await postJSON('/recommend', {
         roster: currentRoster,
         round_number: round,
         drafted_ids: currentDraftedIds,
-        generate_explanations: myTurn
-      })
-    });
-
-    const data = await response.json();
-    setRecommendations(data.recommendations);
-    setLoading(false);
+        generate_explanations: myTurn,
+        league_settings: leagueSettings
+      });
+      if (id !== recRequest.current) return;
+      setRecommendations(data.recommendations || []);
+      setError(e => (e?.kind === 'recs' ? null : e));
+    } catch {
+      if (id !== recRequest.current) return;
+      setError({ kind: 'recs', message: "Couldn't load recommendations." });
+    } finally {
+      if (id === recRequest.current) setLoading(false);
+    }
   };
 
   //assign player to roster spot
   const assignSlot = (player, currentRoster, leagueSettings) => {
-    const { qbStarters, rbStarters, wrStarters, teStarters, flexStarters, benchSlots } = leagueSettings;
+    const { qbStarters, rbStarters, wrStarters, teStarters, flexStarters } = leagueSettings;
 
     if (player.position === 'QB') {
       const qbCount = currentRoster.filter(p => p.slot === 'QB').length;
@@ -84,150 +131,137 @@ const fetchAllPlayers = async () => {
     const flexCount = currentRoster.filter(p => p.slot === 'FLEX').length;
     if (flexCount < flexStarters) return 'FLEX';
 
-    const benchCount = currentRoster.filter(p => p.slot === 'BENCH').length;
-    if (benchCount < benchSlots) return 'BENCH';
+    // Bench, even past its listed size, so a player is never dropped from the roster
+    return 'BENCH';
+  };
 
-    return null;
+  // Shared bookkeeping after any single pick (yours or another team's)
+  const recordPick = (player, teamIndex, newRoster) => {
+    const newDraftedIds = [...draftedIds, player.player_id];
+    const newRound = roundAfter(newDraftedIds.length);
+    const nextPick = currentPick + 1;
+    const isMine = teamIndex === draftPosition - 1;
+
+    setDraftedIds(newDraftedIds);
+    setCurrentRound(newRound);
+    setCurrentPick(nextPick);
+    setTeamRosters(prev => prev.map((r, i) => i === teamIndex
+      ? [...r, { position: player.position, player_id: player.player_id, full_name: player.full_name }]
+      : r));
+    setDraftBoard(prev => [...prev, {
+      pick: currentPick,
+      player: player.full_name,
+      position: player.position,
+      team: isMine ? 'You' : `Team ${teamIndex + 1}`
+    }]);
+
+    if (newDraftedIds.length >= totalPicks) {
+      setDraftComplete(true);
+      return;
+    }
+
+    fetchRecommendations(newRoster, newDraftedIds, newRound, isMyTurn(nextPick));
+    if (activeTab === 'players') fetchAllPlayers(newRoster, newDraftedIds, newRound);
   };
 
   //draft a player
-  const handleDraft = async (player) => {
+  const handleDraft = (player) => {
+    if (simulating || draftedIds.includes(player.player_id)) return;
     const slot = assignSlot(player, roster, { qbStarters, rbStarters, wrStarters, teStarters, flexStarters, benchSlots });
     const newRoster = [...roster, { position: player.position, player_id: player.player_id, full_name: player.full_name, slot }];
-    const newDraftedIds = [...draftedIds, player.player_id];
-    const newRound = Math.floor(newDraftedIds.length / leagueSize) + 1;
-
     setRoster(newRoster);
-    setDraftedIds(newDraftedIds);
-    setCurrentRound(newRound);
-    setCurrentPick(currentPick + 1);
-
-    if (newDraftedIds.length >= leagueSize * rosterSize) {
-      setDraftComplete(true);
-      return;
-}
-
-    setDraftBoard([...draftBoard, {
-      pick: currentPick,
-      player: player.full_name,
-      position: player.position,
-      team: 'You'
-    }]);
-
-    // fire-and-forget: recommendations use drafted_ids from the request, not this
-    fetch('https://backend-ivory-reed-8288.fly.dev/draft', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ player_id: player.player_id })
-    }).catch(() => {});
-
-    fetchRecommendations(newRoster, newDraftedIds, newRound, isMyTurn(currentPick + 1));
+    recordPick(player, draftPosition - 1, newRoster);
   };
 
   //log a pick
-  const handleLogPick = async (player) => {
-    const newDraftedIds = [...draftedIds, player.player_id];
-    const newRound = Math.floor(newDraftedIds.length / leagueSize) + 1;
-
-    setDraftedIds(newDraftedIds);
-    setCurrentRound(newRound);
-    setCurrentPick(currentPick + 1);
-
-    setDraftBoard([...draftBoard, {
-      pick: currentPick,
-      player: player.full_name,
-      position: player.position,
-      team: 'Other'
-    }]);
-
-    // fire-and-forget: recommendations use drafted_ids from the request, not this
-    fetch('https://backend-ivory-reed-8288.fly.dev/draft', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ player_id: player.player_id })
-    }).catch(() => {});
-
-  console.log('logging pick, newDraftedIds:', newDraftedIds);
-  fetchRecommendations(roster, newDraftedIds, newRound, isMyTurn(currentPick + 1));
+  const handleLogPick = (player) => {
+    if (simulating || draftedIds.includes(player.player_id)) return;
+    recordPick(player, teamIndexForPick(currentPick), roster);
   };
 
-const handleAutoDraft = async () => {
-  let pick = currentPick;
-  let draftedIdsCopy = [...draftedIds];
-  let teamRostersCopy = teamRosters.map(r => [...r]);
-  let draftBoardCopy = [...draftBoard];
-  let round = currentRound;
+  const handleAutoDraft = async () => {
+    if (simulating) return;
+    setSimulating(true);
+    setError(e => (e?.kind === 'sim' ? null : e));
 
-  while (!isMyTurn(pick)) {
-    const pickInRound = ((pick - 1) % leagueSize);
-    const isEvenRound = Math.floor((pick - 1) / leagueSize) % 2 === 1;
-    const teamIndex = isEvenRound ? leagueSize - 1 - pickInRound : pickInRound;
+    let pick = currentPick;
+    let draftedIdsCopy = [...draftedIds];
+    let teamRostersCopy = teamRosters.map(r => [...r]);
+    let draftBoardCopy = [...draftBoard];
+    let round = currentRound;
+    let failed = false;
 
-    const currentTeamRoster = teamRostersCopy[teamIndex];
+    try {
+      // Stop at your turn or at the last pick of the draft, whichever comes first
+      while (pick <= totalPicks && !isMyTurn(pick)) {
+        const teamIndex = teamIndexForPick(pick);
+        const currentTeamRoster = teamRostersCopy[teamIndex];
 
-    const response = await fetch('https://backend-ivory-reed-8288.fly.dev/autodraft', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        roster: currentTeamRoster,
-        round_number: round,
-        drafted_ids: draftedIdsCopy
-      })
-    });
+        const data = await postJSON('/autodraft', {
+          roster: currentTeamRoster,
+          round_number: round,
+          drafted_ids: draftedIdsCopy,
+          league_settings: leagueSettings
+        });
+        const pickedPlayer = data.pick;
+        if (!pickedPlayer) break;
 
-    const data = await response.json();
-    const pickedPlayer = data.pick;
+        draftedIdsCopy = [...draftedIdsCopy, pickedPlayer.player_id];
+        teamRostersCopy[teamIndex] = [...currentTeamRoster, { position: pickedPlayer.position, player_id: pickedPlayer.player_id, full_name: pickedPlayer.full_name }];
+        draftBoardCopy = [...draftBoardCopy, { pick, player: pickedPlayer.full_name, position: pickedPlayer.position, team: `Team ${teamIndex + 1}` }];
 
-    if (!pickedPlayer) break;
+        pick++;
+        round = Math.floor((pick - 1) / leagueSize) + 1;
+      }
+    } catch {
+      failed = true;
+      setError({ kind: 'sim', message: 'Sim stopped: couldn\'t reach the server. Picks made so far are kept.' });
+    }
 
-    draftedIdsCopy = [...draftedIdsCopy, pickedPlayer.player_id];
-    teamRostersCopy[teamIndex] = [...currentTeamRoster, { position: pickedPlayer.position, player_id: pickedPlayer.player_id, full_name: pickedPlayer.full_name }];
-    draftBoardCopy = [...draftBoardCopy, { pick, player: pickedPlayer.full_name, position: pickedPlayer.position, team: `Team ${teamIndex + 1}` }];
+    // Keep whatever was simulated, even if the loop stopped early
+    setDraftedIds(draftedIdsCopy);
+    setTeamRosters(teamRostersCopy);
+    setDraftBoard(draftBoardCopy);
+    setCurrentPick(pick);
+    setCurrentRound(round);
+    setSimulating(false);
 
-    pick++;
-    round = Math.floor((pick - 1) / leagueSize) + 1;
-  }
+    if (draftedIdsCopy.length >= totalPicks) {
+      setDraftComplete(true);
+      return;
+    }
+    if (!failed) fetchRecommendations(roster, draftedIdsCopy, round, isMyTurn(pick));
+  };
 
-  if (draftedIdsCopy.length >= leagueSize * rosterSize) {
-  setDraftedIds(draftedIdsCopy);
-  setTeamRosters(teamRostersCopy);
-  setDraftBoard(draftBoardCopy);
-  setCurrentPick(pick);
-  setCurrentRound(round);
-  setDraftComplete(true);
-  return;
-}
-
-  setDraftedIds(draftedIdsCopy);
-  setTeamRosters(teamRostersCopy);
-  setDraftBoard(draftBoardCopy);
-  setCurrentPick(pick);
-  setCurrentRound(round);
-  
-
-  fetchRecommendations(roster, draftedIdsCopy, round, true);
-};
-
-const myTurn = isMyTurn();
+  const myTurn = isMyTurn();
+  // null once you have no picks left in the draft
   const picksUntilMine = (() => {
-    let n = 0;
-    while (!isMyTurn(currentPick + n) && n < leagueSize * 2) n++;
-    return n;
+    for (let n = 0; currentPick + n <= totalPicks; n++) {
+      if (isMyTurn(currentPick + n)) return n;
+    }
+    return null;
   })();
-  const pickingTeam = (() => {
-    const pickInRound = (currentPick - 1) % leagueSize;
-    const isEvenRound = Math.floor((currentPick - 1) / leagueSize) % 2 === 1;
-    return (isEvenRound ? leagueSize - 1 - pickInRound : pickInRound) + 1;
-  })();
+  const pickingTeam = teamIndexForPick(currentPick) + 1;
+  const visibleRecs = recommendations.filter(p => !draftedIds.includes(p.player_id));
+  const retry = {
+    recs: () => fetchRecommendations(),
+    players: () => fetchAllPlayers(),
+    sim: () => handleAutoDraft(),
+  };
+  const errorBanner = (kinds) => error && kinds.includes(error.kind) && (
+    <div className="notice notice-error" role="alert">
+      <span>{error.message}</span>
+      <button className="btn-secondary xs" onClick={retry[error.kind]}>Retry</button>
+    </div>
+  );
   const pickInRound = ((currentPick - 1) % leagueSize) + 1;
   const pickLabel = `${currentRound}.${String(pickInRound).padStart(2, '0')}`;
-  const totalPicks = leagueSize * rosterSize;
   const settings = { qbStarters, rbStarters, wrStarters, teStarters, flexStarters, benchSlots };
 
   const actionButton = (player, size) => myTurn ? (
-    <button className={`btn-primary ${size}`} onClick={() => handleDraft(player)}>Draft</button>
+    <button className={`btn-primary ${size}`} disabled={simulating} onClick={() => handleDraft(player)}>Draft</button>
   ) : (
-    <button className={`btn-secondary ${size}`} onClick={() => handleLogPick(player)}>Log pick</button>
+    <button className={`btn-secondary ${size}`} disabled={simulating} onClick={() => handleLogPick(player)}>Log pick</button>
   );
 
   if (draftComplete) {
@@ -262,12 +296,19 @@ const myTurn = isMyTurn();
             </div>
             <div className={`status ${myTurn ? 'status-live' : ''}`}>
               <span className="status-dot" />
-              {myTurn ? "You're on the clock" : `Team ${pickingTeam} picking · you in ${picksUntilMine}`}
+              {simulating ? 'Simulating picks…'
+                : myTurn ? "You're on the clock"
+                : picksUntilMine === null ? `Team ${pickingTeam} picking · your picks are done`
+                : `Team ${pickingTeam} picking · you in ${picksUntilMine}`}
             </div>
           </div>
 
           <div className="topbar-actions">
-            {!myTurn && <button className="btn-secondary sm" onClick={handleAutoDraft}>Sim to my pick</button>}
+            {!myTurn && (
+              <button className="btn-secondary sm" disabled={simulating} onClick={handleAutoDraft}>
+                {simulating ? 'Simulating…' : picksUntilMine === null ? 'Sim to the end' : 'Sim to my pick'}
+              </button>
+            )}
             <button className="icon-btn" aria-label="How it works" onClick={onShowInfo}>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4"><circle cx="8" cy="8" r="6.5" /><path d="M8 7.2v4M8 4.8v.01" strokeLinecap="round" /></svg>
             </button>
@@ -299,12 +340,20 @@ const myTurn = isMyTurn();
 
           {activeTab === 'recommendations' && (
             <section>
-              {!myTurn && (
+              {errorBanner(['recs', 'sim'])}
+              {!myTurn && !simulating && (
                 <p className="notice">Not your pick. Log what Team {pickingTeam} takes, or sim ahead to your turn. Reasoning is shown when you're on the clock.</p>
               )}
-              {loading ? <SkeletonRows /> : (
-                <ol className="rec-list">
-                  {recommendations.map((player, i) => (
+              {loading && visibleRecs.length === 0 ? <SkeletonRows /> : visibleRecs.length === 0 ? (
+                error?.kind === 'recs' ? null : (
+                  <div className="empty">
+                    <p>No recommendations</p>
+                    <small>There are no available players left to rank.</small>
+                  </div>
+                )
+              ) : (
+                <ol className={`rec-list ${loading ? 'is-stale' : ''}`}>
+                  {visibleRecs.map((player, i) => (
                     <li key={player.player_id} className="rec">
                       <span className="rec-rank mono">{i + 1}</span>
                       <div className="rec-body">
@@ -354,8 +403,9 @@ const myTurn = isMyTurn();
                   ))}
                 </div>
               </div>
-              {allPlayers.length === 0 ? <SkeletonRows /> : (
-                <div className="table">
+              {errorBanner(['players'])}
+              {allPlayers.length === 0 ? (playersLoading ? <SkeletonRows /> : null) : (
+                <div className={`table ${playersLoading ? 'is-stale' : ''}`}>
                   <div className="table-head players-grid">
                     <span>#</span><span>Player</span><span className="hide-sm">Team</span><span className="num">Score</span><span />
                   </div>
@@ -476,7 +526,8 @@ function RosterList({ roster, qbStarters, rbStarters, wrStarters, teStarters, fl
     ...group('TE', teStarters),
     ...group('FLEX', flexStarters),
   ];
-  const bench = group('BENCH', benchSlots);
+  const benchCount = roster.filter(p => p.slot === 'BENCH').length;
+  const bench = group('BENCH', Math.max(benchSlots, benchCount));
 
   const row = ({ slot, player }, i) => (
     <li key={`${slot}${i}`} className={`slot ${player ? '' : 'slot-empty'}`}>
@@ -494,7 +545,7 @@ function RosterList({ roster, qbStarters, rbStarters, wrStarters, teStarters, fl
     <div className="roster">
       <h3>Starters</h3>
       <ul>{starters.map(row)}</ul>
-      {benchSlots > 0 && (
+      {bench.length > 0 && (
         <>
           <h3>Bench</h3>
           <ul>{bench.map(row)}</ul>

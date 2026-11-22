@@ -186,7 +186,7 @@ def calculate_potential_score(player):
     )
 
 def calculate_base_score(search_rank, draftable_pool):
-    return max(1.0, 10 - ((search_rank - 1) / (draftable_pool - 1)) * 9)
+    return max(1.0, 10 - ((search_rank - 1) / max(draftable_pool - 1, 1)) * 9)
 
 
 def build_position_index(fantasy_players):

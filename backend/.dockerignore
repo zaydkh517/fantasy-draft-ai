@@ -9,3 +9,6 @@ fly.toml
 venv/
 __pycache__/
 *.pyc
+
+# draft.db is intentionally included: it seeds players so cold starts answer immediately
+# (the server re-syncs from Sleeper in the background on boot)

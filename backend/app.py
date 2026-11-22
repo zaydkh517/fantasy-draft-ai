@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '.env'))
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from data import get_all_players, get_fantasy_players, get_trending_players, get_player_stats
+from data import get_fantasy_players, get_trending_players, get_player_stats
 from database import init_db, save_players, get_players_from_db, mark_player_drafted, get_drafted_players, reset_draft, save_league_settings, get_league_settings
 from ai import explain_pick
 import threading
@@ -27,41 +27,70 @@ CORS(app)
 
 init_db()
 
-def startup_sync():
-    try:
-        from data import get_fantasy_players, get_player_stats
+_sync_lock = threading.Lock()
+
+def sync_players_to_db():
+    """Pull players and season stats from Sleeper into SQLite. Returns player count."""
+    with _sync_lock:
         players = get_fantasy_players()
         stats = get_player_stats()
         for player in players:
-            player_id = player["player_id"]
-            player_stats = stats.get(player_id, {})
-            player["yards_2025"] = player_stats.get("yards_2025", 0)
-            player["yards_2024"] = player_stats.get("yards_2024", 0)
-            player["targets_2025"] = player_stats.get("targets_2025", 0)
-            player["targets_2024"] = player_stats.get("targets_2024", 0)
-            player["snaps_2025"] = player_stats.get("snaps_2025", 0)
-            player["snaps_2024"] = player_stats.get("snaps_2024", 0)
+            player_stats = stats.get(player["player_id"], {})
+            for key in ("yards_2025", "yards_2024", "targets_2025", "targets_2024", "snaps_2025", "snaps_2024"):
+                player[key] = player_stats.get(key, 0)
         save_players(players)
+        return len(players)
+
+def startup_sync():
+    try:
+        sync_players_to_db()
     except Exception as e:
         print(f"Startup sync failed: {e}")
 
 threading.Thread(target=startup_sync, daemon=True).start()
 
-def get_ranked_players(roster, round_number, drafted_ids):
+def load_players():
+    """Players from the DB; if the DB is empty (fresh image), sync before answering."""
+    players = get_players_from_db()
+    if not players:
+        with _sync_lock:  # waits for an in-flight startup sync to finish
+            players = get_players_from_db()
+        if not players:
+            sync_players_to_db()
+            players = get_players_from_db()
+    return players
+
+SETTINGS_KEYS = ("league_size", "roster_size", "qb_starters", "rb_starters", "wr_starters",
+                 "te_starters", "flex_starters", "bench_slots")
+
+def resolve_settings(requested):
+    """League settings come with each request so concurrent users and multiple
+    machines never share state. Falls back to stored defaults for old clients."""
+    settings = get_league_settings()
+    if isinstance(requested, dict):
+        for key in SETTINGS_KEYS:
+            try:
+                if requested.get(key) is not None:
+                    settings[key] = max(0, int(requested[key]))
+            except (TypeError, ValueError):
+                pass
+    settings["league_size"] = max(2, settings["league_size"])
+    return settings
+
+def get_ranked_players(roster, round_number, drafted_ids, league_settings):
     from logic import rank_players
-    
-    all_players = get_players_from_db()
-    league_settings = get_league_settings()
-    
-    available = [p for p in all_players if p["player_id"] not in drafted_ids]
-    
+
+    all_players = load_players()
+    drafted = set(drafted_ids)
+    available = [p for p in all_players if p["player_id"] not in drafted]
+
     raw_trending = get_trending_cached()
     max_count = max((t.get("count", 1) for t in raw_trending), default=1)
     trending_scores = {
         t["player_id"]: min(10.0, (t.get("count", 0) / max_count) * 10)
         for t in raw_trending
     }
-    
+
     return rank_players(available, all_players, roster, round_number, league_settings, trending_scores)
 
 @app.route('/')
@@ -70,25 +99,12 @@ def home():
 
 @app.route('/sync-players')
 def sync_players():
-    players = get_fantasy_players()
-    stats = get_player_stats()
-    
-    for player in players:
-        player_id = player["player_id"]
-        player_stats = stats.get(player_id, {})
-        player["yards_2025"] = player_stats.get("yards_2025", 0)
-        player["yards_2024"] = player_stats.get("yards_2024", 0)
-        player["targets_2025"] = player_stats.get("targets_2025", 0)
-        player["targets_2024"] = player_stats.get("targets_2024", 0)
-        player["snaps_2025"] = player_stats.get("snaps_2025", 0)
-        player["snaps_2024"] = player_stats.get("snaps_2024", 0)
-    
-    save_players(players)
-    return {"message": f"Synced {len(players)} players to database"}
+    count = sync_players_to_db()
+    return {"message": f"Synced {count} players to database"}
 
 @app.route('/players')
 def players():
-    players = get_players_from_db()
+    players = load_players()
     return jsonify({"count": len(players), "players": players})
 
 @app.route('/draft', methods=['POST'])
@@ -126,15 +142,20 @@ def recommend():
     round_number = data.get('round_number', 1)
     drafted_ids = data.get('drafted_ids', [])
     generate_explanations = data.get('generate_explanations', True)
-    
-    ranked = get_ranked_players(roster, round_number, drafted_ids)
+    settings = resolve_settings(data.get('league_settings'))
+
+    ranked = get_ranked_players(roster, round_number, drafted_ids, settings)
 
     if generate_explanations:
-        contexts = build_explanation_contexts(ranked, roster, get_league_settings())
+        contexts = build_explanation_contexts(ranked, roster, settings)
 
         def add_explanation(item):
             player, context = item
-            player["explanation"] = explain_pick(player, roster, round_number, context)
+            try:
+                player["explanation"] = explain_pick(player, roster, round_number, context)
+            except Exception as e:  # one failed explanation shouldn't sink the whole list
+                print(f"Explanation failed for {player.get('full_name')}: {e}")
+                player["explanation"] = None
             return player
         with ThreadPoolExecutor(max_workers=10) as executor:
             ranked[:10] = list(executor.map(add_explanation, zip(ranked[:10], contexts)))
@@ -166,8 +187,12 @@ def summarize_roster(roster, settings):
         total = settings.get("bench_slots" if slot == "BENCH" else f"{slot.lower()}_starters", 0)
         if not total:
             continue
-        names = [f"{p.get('full_name')} ({p.get('position')})" if slot in ("FLEX", "BENCH") else p.get("full_name")
-                 for p in roster if p.get("slot") == slot]
+        names = []
+        for p in roster:
+            if p.get("slot") != slot:
+                continue
+            name = p.get("full_name") or f"unnamed {p.get('position') or 'player'}"
+            names.append(f"{name} ({p.get('position')})" if slot in ("FLEX", "BENCH") else name)
         filled = ", ".join(names) if names else "none"
         rows.append(f"{SLOT_LABELS[slot]} {len(names)}/{total}: {filled}")
     return rows
@@ -218,8 +243,9 @@ def rank_all():
     roster = data.get('roster', [])
     round_number = data.get('round_number', 1)
     drafted_ids = data.get('drafted_ids', [])
-    
-    ranked = get_ranked_players(roster, round_number, drafted_ids)
+    settings = resolve_settings(data.get('league_settings'))
+
+    ranked = get_ranked_players(roster, round_number, drafted_ids, settings)
     
     return jsonify({"players": ranked})
 
@@ -229,8 +255,9 @@ def autodraft():
     roster = data.get('roster', [])
     round_number = data.get('round_number', 1)
     drafted_ids = data.get('drafted_ids', [])
-    
-    ranked = get_ranked_players(roster, round_number, drafted_ids)
+    settings = resolve_settings(data.get('league_settings'))
+
+    ranked = get_ranked_players(roster, round_number, drafted_ids, settings)
     
     if not ranked:
         return jsonify({"pick": None})

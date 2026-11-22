@@ -1,5 +1,5 @@
-import DraftScreen from './DraftScreen';
-import { useState } from 'react';
+import DraftScreen, { API } from './DraftScreen';
+import { useState, useEffect } from 'react';
 import './App.css';
 import InfoModal from './InfoModal';
 
@@ -39,33 +39,17 @@ function App() {
   const [draftPosition, setDraftPosition] = useState(1);
   const rosterSize = qbStarters + rbStarters + wrStarters + teStarters + flexStarters + benchSlots;
   const [screen, setScreen] = useState('setup');
-  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = async (e) => {
+  // League settings travel with every draft request, so there's nothing to save first.
+  const handleSubmit = (e) => {
     e.preventDefault();
-    setSubmitting(true);
-    const response = await fetch('https://backend-ivory-reed-8288.fly.dev/settings', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        league_size: leagueSize,
-        roster_size: rosterSize,
-        qb_starters: qbStarters,
-        rb_starters: rbStarters,
-        wr_starters: wrStarters,
-        te_starters: teStarters,
-        flex_starters: flexStarters,
-        bench_slots: benchSlots
-      })
-    });
-
-    const data = await response.json();
-    console.log(data);
-    setSubmitting(false);
     setScreen('draft');
   };
+
+  // Wake the backend (Fly stops idle machines) while the user fills in settings
+  useEffect(() => {
+    fetch(`${API}/`).catch(() => {});
+  }, []);
 
   const handleLeagueSize = (n) => {
     setLeagueSize(n);
@@ -122,9 +106,7 @@ function App() {
                 <div><dt>Rounds</dt><dd>{rosterSize}</dd></div>
                 <div><dt>Total picks</dt><dd>{leagueSize * rosterSize}</dd></div>
               </dl>
-              <button type="submit" className="btn-primary" disabled={submitting}>
-                {submitting ? 'Starting…' : 'Start draft'}
-              </button>
+              <button type="submit" className="btn-primary">Start draft</button>
             </footer>
           </form>
         </main>

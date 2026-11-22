@@ -4,3 +4,4 @@ venv/
 __pycache__/
 *.pyc
 backend/draft.db
+node_modules/

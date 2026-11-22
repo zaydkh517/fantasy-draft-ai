@@ -2,6 +2,7 @@ import DraftScreen, { API } from './DraftScreen';
 import { useState, useEffect } from 'react';
 import './App.css';
 import InfoModal from './InfoModal';
+import { loadSettings, saveSettings, hasDraft, clearDraft, getFlag, setFlag } from './storage';
 
 function Stepper({ label, hint, value, min = 0, max = 99, onChange }) {
   const clamp = (n) => Math.max(min, Math.min(max, n));
@@ -28,22 +29,32 @@ function Stepper({ label, hint, value, min = 0, max = 99, onChange }) {
 }
 
 function App() {
-  const [showModal, setShowModal] = useState(!localStorage.getItem('seenModal'));
-  const [leagueSize, setLeagueSize] = useState(12);
-  const [qbStarters, setQbStarters] = useState(1);
-  const [rbStarters, setRbStarters] = useState(2);
-  const [wrStarters, setWrStarters] = useState(2);
-  const [teStarters, setTeStarters] = useState(1);
-  const [flexStarters, setFlexStarters] = useState(1);
-  const [benchSlots, setBenchSlots] = useState(7);
-  const [draftPosition, setDraftPosition] = useState(1);
+  // Last-used settings; an unfinished draft reopens on load
+  const [saved] = useState(() => loadSettings() || {});
+  const [showModal, setShowModal] = useState(() => !getFlag('seenModal'));
+  const [leagueSize, setLeagueSize] = useState(saved.leagueSize ?? 12);
+  const [qbStarters, setQbStarters] = useState(saved.qbStarters ?? 1);
+  const [rbStarters, setRbStarters] = useState(saved.rbStarters ?? 2);
+  const [wrStarters, setWrStarters] = useState(saved.wrStarters ?? 2);
+  const [teStarters, setTeStarters] = useState(saved.teStarters ?? 1);
+  const [flexStarters, setFlexStarters] = useState(saved.flexStarters ?? 1);
+  const [benchSlots, setBenchSlots] = useState(saved.benchSlots ?? 7);
+  const [draftPosition, setDraftPosition] = useState(saved.draftPosition ?? 1);
   const rosterSize = qbStarters + rbStarters + wrStarters + teStarters + flexStarters + benchSlots;
-  const [screen, setScreen] = useState('setup');
+  const [screen, setScreen] = useState(() => (loadSettings() && hasDraft() ? 'draft' : 'setup'));
 
-  // League settings travel with every draft request, so there's nothing to save first.
+  // League settings travel with every draft request; they're saved locally only
+  // so they're prefilled next time and a refresh can resume the draft.
   const handleSubmit = (e) => {
     e.preventDefault();
+    saveSettings({ leagueSize, draftPosition, qbStarters, rbStarters, wrStarters, teStarters, flexStarters, benchSlots });
+    clearDraft();
     setScreen('draft');
+  };
+
+  const handleNewDraft = () => {
+    clearDraft();
+    setScreen('setup');
   };
 
   // Wake the backend (Fly stops idle machines) while the user fills in settings
@@ -57,7 +68,7 @@ function App() {
   };
 
   const closeModal = () => {
-    localStorage.setItem('seenModal', 'true');
+    setFlag('seenModal', 'true');
     setShowModal(false);
   };
 
@@ -122,6 +133,7 @@ function App() {
           flexStarters={flexStarters}
           benchSlots={benchSlots}
           onShowInfo={() => setShowModal(true)}
+          onNewDraft={handleNewDraft}
         />
       )}
     </div>

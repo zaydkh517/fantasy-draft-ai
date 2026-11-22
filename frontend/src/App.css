@@ -488,6 +488,7 @@ button:disabled { cursor: not-allowed; opacity: 0.4; }
 .eyebrow { display: inline-block; color: var(--accent); font-size: 13px; font-weight: 500; margin-bottom: 8px; }
 .complete-head h1 { font-size: 32px; font-weight: 600; letter-spacing: -0.025em; margin-bottom: 4px; }
 .complete-head p { color: var(--text-2); }
+.complete-head .btn-primary { margin-top: 16px; }
 
 /* ---------- Modal ---------- */
 .modal-overlay {
@@ -540,6 +541,8 @@ button:disabled { cursor: not-allowed; opacity: 0.4; }
 @media (max-width: 720px) {
   .topbar-inner { grid-template-columns: auto 1fr auto; height: auto; padding: 10px 16px; gap: 10px; }
   .brand-text { display: none; }
+  .topbar-actions { gap: 4px; }
+  .topbar-actions .btn-ghost { padding: 0 8px; }
   .clock { flex-direction: column; align-items: flex-start; gap: 4px; }
   .status { height: 24px; font-size: 12px; padding: 0 10px; }
   .rec { grid-template-columns: minmax(0, 1fr); padding: 16px; gap: 12px; }

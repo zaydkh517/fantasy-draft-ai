@@ -40,6 +40,9 @@ const props = {
   onShowInfo: () => {},
 };
 
+// Saved drafts would otherwise leak from one test into the next
+beforeEach(() => localStorage.clear());
+
 // First recommendation row, once the list is loaded and clickable
 const firstRec = () => waitFor(() => {
   const el = document.querySelector('.rec-list:not(.is-stale) .rec');
@@ -118,4 +121,30 @@ test('failed recommendations show a retry instead of loading forever', async () 
   fireEvent.click(screen.getByText('Retry'));
   await firstRec();
   expect(screen.queryByRole('alert')).toBeNull();
+});
+
+test('a draft in progress survives a reload', async () => {
+  mockBackend();
+  const { unmount } = render(<DraftScreen {...props} />);
+  fireEvent.click(within(await firstRec()).getByRole('button', { name: 'Draft' }));
+  await waitFor(() => expect(document.querySelector('.clock-sub')).toHaveTextContent('2/6'));
+  unmount();
+
+  mockBackend();
+  render(<DraftScreen {...props} />);
+  expect(document.querySelector('.clock-sub')).toHaveTextContent('2/6');
+  // The restored draft's picks go to the backend, so Player 1 isn't recommended again
+  await waitFor(() => expect(calls.find(c => c.path === '/recommend')?.body.drafted_ids).toEqual(['p1']));
+});
+
+test('a saved draft is not restored under different league settings', async () => {
+  mockBackend();
+  const { unmount } = render(<DraftScreen {...props} />);
+  fireEvent.click(within(await firstRec()).getByRole('button', { name: 'Draft' }));
+  await waitFor(() => expect(document.querySelector('.clock-sub')).toHaveTextContent('2/6'));
+  unmount();
+
+  mockBackend();
+  render(<DraftScreen {...props} draftPosition={2} />);
+  expect(document.querySelector('.clock-sub')).toHaveTextContent('1/6');
 });

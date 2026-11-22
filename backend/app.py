@@ -1,12 +1,14 @@
 from concurrent.futures import ThreadPoolExecutor
+import hmac
 import os
 from dotenv import load_dotenv
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '.env'))
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from data import get_fantasy_players, get_trending_players, get_player_stats
-from database import init_db, save_players, get_players_from_db, mark_player_drafted, get_drafted_players, reset_draft, save_league_settings, get_league_settings
+from data import get_fantasy_players, get_trending_players, get_player_stats, STAT_KEYS
+from database import init_db, save_players, get_players_from_db
 from ai import explain_pick
+import ratelimit
 import threading
 import time
 
@@ -25,6 +27,11 @@ def get_trending_cached():
 app = Flask(__name__)
 CORS(app)
 
+@app.before_request
+def limit_requests():
+    if request.method != "OPTIONS" and not ratelimit.allow_request():
+        return jsonify({"error": "Too many requests, slow down"}), 429
+
 init_db()
 
 _sync_lock = threading.Lock()
@@ -36,7 +43,7 @@ def sync_players_to_db():
         stats = get_player_stats()
         for player in players:
             player_stats = stats.get(player["player_id"], {})
-            for key in ("yards_2025", "yards_2024", "targets_2025", "targets_2024", "snaps_2025", "snaps_2024"):
+            for key in STAT_KEYS:
                 player[key] = player_stats.get(key, 0)
         save_players(players)
         return len(players)
@@ -60,13 +67,16 @@ def load_players():
             players = get_players_from_db()
     return players
 
-SETTINGS_KEYS = ("league_size", "roster_size", "qb_starters", "rb_starters", "wr_starters",
-                 "te_starters", "flex_starters", "bench_slots")
+DEFAULT_SETTINGS = {
+    "league_size": 12, "roster_size": 16, "qb_starters": 1, "rb_starters": 2, "wr_starters": 2,
+    "te_starters": 1, "flex_starters": 1, "bench_slots": 7,
+}
+SETTINGS_KEYS = tuple(DEFAULT_SETTINGS)
 
 def resolve_settings(requested):
     """League settings come with each request so concurrent users and multiple
-    machines never share state. Falls back to stored defaults for old clients."""
-    settings = get_league_settings()
+    machines never share state. Missing values fall back to the defaults."""
+    settings = dict(DEFAULT_SETTINGS)
     if isinstance(requested, dict):
         for key in SETTINGS_KEYS:
             try:
@@ -97,8 +107,13 @@ def get_ranked_players(roster, round_number, drafted_ids, league_settings):
 def home():
     return {"status": "Draft Assistant API is running"}
 
-@app.route('/sync-players')
+@app.route('/sync-players', methods=['POST'])
 def sync_players():
+    """Manual re-sync from Sleeper. Needs the SYNC_TOKEN secret; disabled if unset."""
+    expected = os.getenv("SYNC_TOKEN")
+    given = request.headers.get("X-Sync-Token", "")
+    if not expected or not hmac.compare_digest(given, expected):
+        return jsonify({"error": "Forbidden"}), 403
     count = sync_players_to_db()
     return {"message": f"Synced {count} players to database"}
 
@@ -107,41 +122,14 @@ def players():
     players = load_players()
     return jsonify({"count": len(players), "players": players})
 
-@app.route('/draft', methods=['POST'])
-def draft_player():
-    data = request.json
-    player_id = data.get('player_id')
-    mark_player_drafted(player_id)
-    return {"message": f"Player {player_id} marked as drafted"}
-
-@app.route('/drafted')
-def drafted():
-    drafted = get_drafted_players()
-    return {"drafted": drafted}
-
-@app.route('/reset', methods=['POST'])
-def reset():
-    reset_draft()
-    return {"message": "Draft reset successfully"}
-
-@app.route('/settings', methods=['POST'])
-def save_settings():
-    data = request.json
-    save_league_settings(data)
-    return {"message": "League settings saved"}
-
-@app.route('/settings', methods=['GET'])
-def get_settings():
-    settings = get_league_settings()
-    return settings
-
 @app.route('/recommend', methods=['POST'])
 def recommend():
     data = request.json
     roster = data.get('roster', [])
     round_number = data.get('round_number', 1)
     drafted_ids = data.get('drafted_ids', [])
-    generate_explanations = data.get('generate_explanations', True)
+    # Explanations cost OpenAI calls; past the limit, still answer, just without them
+    generate_explanations = data.get('generate_explanations', True) and ratelimit.allow_explanations()
     settings = resolve_settings(data.get('league_settings'))
 
     ranked = get_ranked_players(roster, round_number, drafted_ids, settings)

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { loadDraft, saveDraft } from './storage';
 
 export const API = 'https://backend-ivory-reed-8288.fly.dev';
 
@@ -12,21 +13,24 @@ async function postJSON(path, body) {
   return response.json();
 }
 
-function DraftScreen({ leagueSize, rosterSize, draftPosition, qbStarters, rbStarters, wrStarters, teStarters, flexStarters, benchSlots, onShowInfo }) {
+function DraftScreen({ leagueSize, rosterSize, draftPosition, qbStarters, rbStarters, wrStarters, teStarters, flexStarters, benchSlots, onShowInfo, onNewDraft = () => {} }) {
+  // The draft is saved after every pick, so a refresh picks up where it left off
+  const draftKey = { leagueSize, rosterSize, draftPosition, qbStarters, rbStarters, wrStarters, teStarters, flexStarters, benchSlots };
+  const [restored] = useState(() => loadDraft(draftKey) || {});
   const [activeTab, setActiveTab] = useState('recommendations');
   const [recommendations, setRecommendations] = useState([]);
-  const [roster, setRoster] = useState([]);
-  const [draftedIds, setDraftedIds] = useState([]);
-  const [currentRound, setCurrentRound] = useState(1);
+  const [roster, setRoster] = useState(restored.roster || []);
+  const [draftedIds, setDraftedIds] = useState(restored.draftedIds || []);
+  const [currentRound, setCurrentRound] = useState(restored.currentRound || 1);
   const [loading, setLoading] = useState(false);
-  const [currentPick, setCurrentPick] = useState(1);
+  const [currentPick, setCurrentPick] = useState(restored.currentPick || 1);
   const [allPlayers, setAllPlayers] = useState([]);
   const [playersLoading, setPlayersLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [draftBoard, setDraftBoard] = useState([]);
+  const [draftBoard, setDraftBoard] = useState(restored.draftBoard || []);
   const [positionFilter, setPositionFilter] = useState('ALL');
-  const [teamRosters, setTeamRosters] = useState(Array.from({ length: leagueSize }, () => []));
-  const [draftComplete, setDraftComplete] = useState(false);
+  const [teamRosters, setTeamRosters] = useState(restored.teamRosters || Array.from({ length: leagueSize }, () => []));
+  const [draftComplete, setDraftComplete] = useState(restored.draftComplete || false);
   const [simulating, setSimulating] = useState(false);
   const [error, setError] = useState(null); // { kind: 'recs' | 'players' | 'sim', message }
 
@@ -83,9 +87,18 @@ function DraftScreen({ leagueSize, rosterSize, draftPosition, qbStarters, rbStar
   };
 
   useEffect(() => {
-    fetchRecommendations();
+    if (!draftComplete) fetchRecommendations();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    saveDraft(draftKey, { roster, draftedIds, currentRound, currentPick, draftBoard, teamRosters, draftComplete });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roster, draftedIds, currentRound, currentPick, draftBoard, teamRosters, draftComplete]);
+
+  const confirmNewDraft = () => {
+    if (window.confirm('Start a new draft? This one will be discarded.')) onNewDraft();
+  };
 
   //get recommendations
   const fetchRecommendations = async (currentRoster = roster, currentDraftedIds = draftedIds, round = currentRound, myTurn = isMyTurn()) => {
@@ -271,6 +284,7 @@ function DraftScreen({ leagueSize, rosterSize, draftPosition, qbStarters, rbStar
           <span className="eyebrow">Draft complete</span>
           <h1>Your team</h1>
           <p>{roster.length} players drafted across {currentRound > rosterSize ? rosterSize : currentRound} rounds.</p>
+          <button className="btn-primary" onClick={onNewDraft}>New draft</button>
         </header>
         <div className="panel">
           <RosterList roster={roster} {...settings} />
@@ -309,6 +323,7 @@ function DraftScreen({ leagueSize, rosterSize, draftPosition, qbStarters, rbStar
                 {simulating ? 'Simulating…' : picksUntilMine === null ? 'Sim to the end' : 'Sim to my pick'}
               </button>
             )}
+            <button className="btn-ghost sm" disabled={simulating} onClick={confirmNewDraft}>New draft</button>
             <button className="icon-btn" aria-label="How it works" onClick={onShowInfo}>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4"><circle cx="8" cy="8" r="6.5" /><path d="M8 7.2v4M8 4.8v.01" strokeLinecap="round" /></svg>
             </button>

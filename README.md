@@ -46,7 +46,7 @@ The AI Fantasy Draft Engine analyzes 2,800+ NFL players in real time and recomme
 | Database | SQLite |
 | Frontend | React |
 | Player Data | Sleeper REST API |
-| Stats Data | Sleeper Stats API (2024/2025 seasons) |
+| Stats Data | Sleeper Stats API (last two completed seasons) |
 | AI | OpenAI GPT-4.1-mini |
 | Backend Deployment | fly.io |
 | Frontend Deployment | Vercel |

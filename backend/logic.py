@@ -70,12 +70,12 @@ def calculate_potential_score(player):
     position = player.get("position")
     years_exp = player.get("years_exp") or 0
     depth = player.get("depth_chart_order") or 2
-    yards_2025 = player.get("yards_2025") or 0
-    yards_2024 = player.get("yards_2024") or 0
-    targets_2025 = player.get("targets_2025") or 0
-    targets_2024 = player.get("targets_2024") or 0
-    snaps_2025 = player.get("snaps_2025") or 0
-    snaps_2024 = player.get("snaps_2024") or 0
+    yards_last = player.get("yards_last") or 0
+    yards_prev = player.get("yards_prev") or 0
+    targets_last = player.get("targets_last") or 0
+    targets_prev = player.get("targets_prev") or 0
+    snaps_last = player.get("snaps_last") or 0
+    snaps_prev = player.get("snaps_prev") or 0
     search_rank = player.get("search_rank") or 9999999
 
     if age is None or position is None:
@@ -92,15 +92,15 @@ def calculate_potential_score(player):
     age_score = max(1.0, min(age_score, 10.0))
 
     # Yards trend score
-    if yards_2024 > 0 and yards_2025 > 0:
-        yards_change = (yards_2025 - yards_2024) / yards_2024
+    if yards_prev > 0 and yards_last > 0:
+        yards_change = (yards_last - yards_prev) / yards_prev
         yards_trend = min(10.0, max(1.0, 5.5 + (yards_change * 10)))
-    elif yards_2025 > 0:
+    elif yards_last > 0:
         position_avg_yards = POSITION_AVG_YARDS.get(position, 800)
-        yards_trend = min(10.0, max(1.0, (yards_2025 / position_avg_yards) * 7.0))
-    elif yards_2024 > 0:
+        yards_trend = min(10.0, max(1.0, (yards_last / position_avg_yards) * 7.0))
+    elif yards_prev > 0:
         position_avg_yards = POSITION_AVG_YARDS.get(position, 800)
-        yards_trend = min(10.0, max(1.0, (yards_2024 / position_avg_yards) * 7.0))
+        yards_trend = min(10.0, max(1.0, (yards_prev / position_avg_yards) * 7.0))
     elif years_exp == 0:
         yards_trend = max(5.0, min(8.0, 10 - (search_rank * 0.03)))
     else:
@@ -109,30 +109,30 @@ def calculate_potential_score(player):
     # Target trend score
     if position == "QB":
         targets_trend = 5.0
-    elif targets_2024 > 0 and targets_2025 > 0:
-        targets_change = (targets_2025 - targets_2024) / targets_2024
+    elif targets_prev > 0 and targets_last > 0:
+        targets_change = (targets_last - targets_prev) / targets_prev
         targets_trend = min(10.0, max(1.0, 5.5 + (targets_change * 10)))
-    elif targets_2025 > 0:
+    elif targets_last > 0:
         position_avg_targets = POSITION_AVG_TARGETS.get(position, 70)
-        targets_trend = min(10.0, max(1.0, (targets_2025 / position_avg_targets) * 7.0))
-    elif targets_2024 > 0:
+        targets_trend = min(10.0, max(1.0, (targets_last / position_avg_targets) * 7.0))
+    elif targets_prev > 0:
         position_avg_targets = POSITION_AVG_TARGETS.get(position, 70)
-        targets_trend = min(10.0, max(1.0, (targets_2024 / position_avg_targets) * 7.0))
+        targets_trend = min(10.0, max(1.0, (targets_prev / position_avg_targets) * 7.0))
     elif years_exp == 0:
         targets_trend = max(5.0, min(8.0, 10 - (search_rank * 0.03)))
     else:
         targets_trend = 5.0
 
     # Snap trend score
-    if snaps_2024 > 0 and snaps_2025 > 0:
-        snaps_change = (snaps_2025 - snaps_2024) / snaps_2024
+    if snaps_prev > 0 and snaps_last > 0:
+        snaps_change = (snaps_last - snaps_prev) / snaps_prev
         snaps_trend = min(10.0, max(1.0, 5.5 + (snaps_change * 10)))
-    elif snaps_2025 > 0:
+    elif snaps_last > 0:
         position_avg_snaps = POSITION_AVG_SNAPS.get(position, 500)
-        snaps_trend = min(10.0, max(1.0, (snaps_2025 / position_avg_snaps) * 7.0))
-    elif snaps_2024 > 0:
+        snaps_trend = min(10.0, max(1.0, (snaps_last / position_avg_snaps) * 7.0))
+    elif snaps_prev > 0:
         position_avg_snaps = POSITION_AVG_SNAPS.get(position, 500)
-        snaps_trend = min(10.0, max(1.0, (snaps_2024 / position_avg_snaps) * 7.0))
+        snaps_trend = min(10.0, max(1.0, (snaps_prev / position_avg_snaps) * 7.0))
     elif years_exp == 0:
         snaps_trend = max(5.0, min(8.0, 10 - (search_rank * 0.03)))
     else:

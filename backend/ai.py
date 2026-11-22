@@ -1,6 +1,7 @@
 import os
 import threading
 from openai import OpenAI
+from data import stat_seasons
 
 MODEL = os.getenv("EXPLAIN_MODEL", "gpt-4.1-mini")
 
@@ -52,14 +53,15 @@ def explain_pick(player, roster, round_number, context=None):
 
 def _trend(label, new, old):
     new, old = new or 0, old or 0
+    last, prev = stat_seasons()
     if new and old:
         pct = round((new - old) / old * 100)
         direction = "up" if pct > 0 else "down" if pct < 0 else "flat"
-        return f"{label}: {old} (2024) → {new} (2025), {direction} {abs(pct)}%"
+        return f"{label}: {old} ({prev}) → {new} ({last}), {direction} {abs(pct)}%"
     if new:
-        return f"{label}: {new} in 2025 (no 2024 data)"
+        return f"{label}: {new} in {last} (no {prev} data)"
     if old:
-        return f"{label}: {old} in 2024, none in 2025"
+        return f"{label}: {old} in {prev}, none in {last}"
     return None
 
 
@@ -106,10 +108,10 @@ def _build_prompt(player, roster, round_number, context):
             drop = "no real drop-off; similar options remain at the position"
         lines.append(f"- Next-best {position} available: {nxt['name']} (consensus rank {nxt['rank']}): {drop}")
 
-    production = [_trend("Yards", player.get("yards_2025"), player.get("yards_2024"))]
+    production = [_trend("Yards", player.get("yards_last"), player.get("yards_prev"))]
     if position != "QB":
-        production.append(_trend("Targets", player.get("targets_2025"), player.get("targets_2024")))
-    production.append(_trend("Snaps", player.get("snaps_2025"), player.get("snaps_2024")))
+        production.append(_trend("Targets", player.get("targets_last"), player.get("targets_prev")))
+    production.append(_trend("Snaps", player.get("snaps_last"), player.get("snaps_prev")))
     production = [p for p in production if p]
     if production:
         lines.append("PRODUCTION:")
